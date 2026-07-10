@@ -1,20 +1,46 @@
-export type MoneyRow = {
+export type TransactionRow = {
   id: string
   date: string
   amount: number
-  category:
-    | "Transportation"
-    | "Food"
-    | "Medical"
-    | "Entertainment"
-    | "Personal"
-    | "Gifts"
-    | "Bills"
-    | "Income"
-    | "Other"
-    | null
-  transaction_type: "income" | "expense" | null
+  category: string | null
+  transaction_type: "income" | "expense"
+  payment_method: string | null
   description: string | null
+  account_id: string | null
+}
+
+export type AccountType =
+  | "credit_card"
+  | "checking"
+  | "savings"
+  | "debit"
+  | "cash"
+  | "investment"
+
+export type AccountRow = {
+  id: string
+  name: string
+  account_type: AccountType
+  institution: string | null
+  last_four: string | null
+  credit_limit: number | null
+  credit_used: number
+  payment_due_date: string | null
+  notes: string | null
+}
+
+export type BillingCycle = "weekly" | "monthly" | "quarterly" | "yearly"
+
+export type SubscriptionRow = {
+  id: string
+  name: string
+  amount: number
+  billing_cycle: BillingCycle
+  category: string | null
+  account_id: string | null
+  due_date: string | null
+  is_active: boolean
+  notes: string | null
 }
 
 export type NutritionRow = {

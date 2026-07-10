@@ -1,25 +1,18 @@
 import { redirect } from "next/navigation"
-import {
-  BookOpen,
-  Dumbbell,
-  LayoutGrid,
-  LogOut,
-  Scale,
-  Utensils,
-  Wallet,
-} from "lucide-react"
+import { BookOpen, Dumbbell, Scale, Utensils, Wallet } from "lucide-react"
 
-import { signout } from "@/app/login/actions"
+import { CheckinCalendar } from "@/components/dashboard/checkin-calendar"
+import { DashboardSections } from "@/components/dashboard/dashboard-sections"
 import { GymSection } from "@/components/dashboard/gym-section"
 import { JournalSection } from "@/components/dashboard/journal-section"
 import { MoneySection } from "@/components/dashboard/money-section"
 import { NutritionSection } from "@/components/dashboard/nutrition-section"
 import { WeightSection } from "@/components/dashboard/weight-section"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { cn } from "@/lib/utils"
 import {
+  accountActivity,
+  activeSubscriptionsMonthly,
   categorySpend,
   dailyGymVolume,
   dailyNutrition,
@@ -27,6 +20,7 @@ import {
   monthlyMoney,
   moneyTotalsThisMonth,
   moodCounts,
+  paymentMethodTotals,
   nutritionToday,
   recentPRs,
   weightChange,
@@ -35,10 +29,12 @@ import {
 } from "@/lib/stats"
 import { createClient } from "@/lib/supabase/server"
 import type {
+  AccountRow,
   GymRow,
   JournalRow,
-  MoneyRow,
   NutritionRow,
+  SubscriptionRow,
+  TransactionRow,
   WeightRow,
 } from "@/lib/types"
 
@@ -48,22 +44,39 @@ const usd = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 0,
 })
 
+type StatAccent = "emerald" | "amber" | "indigo" | "violet" | "rose"
+
+const STAT_ACCENTS: Record<StatAccent, string> = {
+  emerald: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+  amber: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+  indigo: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400",
+  violet: "bg-violet-500/15 text-violet-600 dark:text-violet-400",
+  rose: "bg-rose-500/15 text-rose-600 dark:text-rose-400",
+}
+
 function StatCard({
   icon: Icon,
   label,
   value,
   hint,
+  accent,
 }: {
   icon: React.ComponentType<{ className?: string }>
   label: string
   value: string
   hint?: string
+  accent: StatAccent
 }) {
   return (
     <Card>
       <CardContent className="flex items-center gap-3">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-          <Icon className="size-4.5 text-muted-foreground" />
+        <div
+          className={cn(
+            "flex size-10 shrink-0 items-center justify-center rounded-lg",
+            STAT_ACCENTS[accent]
+          )}
+        >
+          <Icon className="size-4.5" />
         </div>
         <div className="min-w-0">
           <p className="truncate text-xs text-muted-foreground">{label}</p>
@@ -88,12 +101,34 @@ export default async function DashboardPage() {
     redirect("/login")
   }
 
-  const [money, nutrition, gym, journal, weight] = await Promise.all([
+  // Catch up any subscriptions whose due_date has passed: generate the
+  // matching transactions and advance the schedule. Idempotent — if
+  // nothing's due, it's a no-op.
+  await supabase.rpc("advance_due_subscriptions")
+
+  const [transactions, accounts, subscriptions, nutrition, gym, journal, weight] =
+    await Promise.all([
     supabase
-      .from("money")
-      .select("id, date, amount, category, transaction_type, description")
+      .from("transactions")
+      .select(
+        "id, date, amount, category, transaction_type, description, payment_method, account_id"
+      )
       .eq("user_id", user.id)
       .order("date", { ascending: false }),
+    supabase
+      .from("accounts")
+      .select(
+        "id, name, account_type, institution, last_four, credit_limit, credit_used, payment_due_date, notes"
+      )
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("subscriptions")
+      .select(
+        "id, name, amount, billing_cycle, category, account_id, due_date, is_active, notes"
+      )
+      .eq("user_id", user.id)
+      .order("due_date", { ascending: true, nullsFirst: false }),
     supabase
       .from("nutrition")
       .select(
@@ -120,13 +155,16 @@ export default async function DashboardPage() {
       .order("date", { ascending: true }),
   ])
 
-  const moneyRows = (money.data ?? []) as MoneyRow[]
+  const transactionRows = (transactions.data ?? []) as TransactionRow[]
+  const accountRows = (accounts.data ?? []) as AccountRow[]
+  const subscriptionRows = (subscriptions.data ?? []) as SubscriptionRow[]
   const nutritionRows = (nutrition.data ?? []) as NutritionRow[]
   const gymRows = (gym.data ?? []) as GymRow[]
   const journalRows = (journal.data ?? []) as JournalRow[]
   const weightRows = (weight.data ?? []) as WeightRow[]
 
-  const totals = moneyTotalsThisMonth(moneyRows)
+  const totals = moneyTotalsThisMonth(transactionRows)
+  const subsMonthly = activeSubscriptionsMonthly(subscriptionRows)
   const today = nutritionToday(nutritionRows)
   const weekWorkouts = workoutsThisWeek(gymRows)
   const series = weightSeries(weightRows)
@@ -136,134 +174,90 @@ export default async function DashboardPage() {
     weightRows.length > 0 ? weightRows[weightRows.length - 1] : null
 
   return (
-    <div className="min-h-svh bg-muted/40">
-      <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4">
-          <div className="flex items-center gap-2">
-            <div className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <LayoutGrid className="size-4" />
+    <DashboardSections
+      views={{
+        overview: (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+              <StatCard
+                icon={Wallet}
+                accent="emerald"
+                label="Net this month"
+                value={usd.format(totals.net)}
+                hint={`${usd.format(totals.income)} in · ${usd.format(totals.expenses)} out`}
+              />
+              <StatCard
+                icon={Utensils}
+                accent="amber"
+                label="Calories today"
+                value={today.calories.toLocaleString()}
+                hint={`${today.protein}g protein · ${today.meals} ${today.meals === 1 ? "meal" : "meals"}`}
+              />
+              <StatCard
+                icon={Dumbbell}
+                accent="indigo"
+                label="Gym days this week"
+                value={String(weekWorkouts)}
+                hint={weekWorkouts === 0 ? "Time to move" : "Keep it up"}
+              />
+              <StatCard
+                icon={Scale}
+                accent="violet"
+                label="Current weight"
+                value={change ? `${change.latest}` : "—"}
+                hint={
+                  change
+                    ? `${change.change > 0 ? "+" : ""}${change.change} last 30 days`
+                    : "No weigh-ins yet"
+                }
+              />
+              <StatCard
+                icon={BookOpen}
+                accent="rose"
+                label="Last mood"
+                value={mood ? mood[0].toUpperCase() + mood.slice(1) : "—"}
+                hint={`${journalRows.length} total entries`}
+              />
             </div>
-            <span className="font-semibold tracking-tight">Mosaic</span>
+            <CheckinCalendar />
           </div>
-          <div className="flex items-center gap-3">
-            <span className="hidden text-sm text-muted-foreground sm:inline">
-              {user.email}
-            </span>
-            <form action={signout}>
-              <Button variant="ghost" size="sm" type="submit">
-                <LogOut data-icon="inline-start" className="size-4" />
-                Sign out
-              </Button>
-            </form>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-6xl space-y-6 px-4 py-6">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Your mosaic
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Everything you&apos;re tracking, in one place.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-          <StatCard
-            icon={Wallet}
-            label="Net this month"
-            value={usd.format(totals.net)}
-            hint={`${usd.format(totals.income)} in · ${usd.format(totals.expenses)} out`}
+        ),
+        money: (
+          <MoneySection
+            monthly={monthlyMoney(transactionRows)}
+            categoriesThisMonth={categorySpend(transactionRows, 0)}
+            categoriesLastMonth={categorySpend(transactionRows, 1)}
+            methodsThisMonth={paymentMethodTotals(transactionRows, 0)}
+            methodsLastMonth={paymentMethodTotals(transactionRows, 1)}
+            accounts={accountRows}
+            accountsThisMonth={accountActivity(transactionRows, accountRows, 0)}
+            accountsLastMonth={accountActivity(transactionRows, accountRows, 1)}
+            subscriptions={subscriptionRows}
+            subsMonthly={subsMonthly}
+            recent={transactionRows.slice(0, 10)}
           />
-          <StatCard
-            icon={Utensils}
-            label="Calories today"
-            value={today.calories.toLocaleString()}
-            hint={`${today.protein}g protein · ${today.meals} ${today.meals === 1 ? "meal" : "meals"}`}
+        ),
+        nutrition: (
+          <NutritionSection
+            daily={dailyNutrition(nutritionRows)}
+            recent={nutritionRows.slice(0, 10)}
           />
-          <StatCard
-            icon={Dumbbell}
-            label="Gym days this week"
-            value={String(weekWorkouts)}
-            hint={weekWorkouts === 0 ? "Time to move" : "Keep it up"}
+        ),
+        gym: (
+          <GymSection
+            volume={dailyGymVolume(gymRows)}
+            prs={recentPRs(gymRows)}
+            recent={gymRows.slice(0, 10)}
           />
-          <StatCard
-            icon={Scale}
-            label="Current weight"
-            value={change ? `${change.latest}` : "—"}
-            hint={
-              change
-                ? `${change.change > 0 ? "+" : ""}${change.change} last 30 days`
-                : "No weigh-ins yet"
-            }
+        ),
+        weight: <WeightSection series={series} latest={latestWeighIn} />,
+        journal: (
+          <JournalSection
+            moods={moodCounts(journalRows)}
+            recent={journalRows.slice(0, 5)}
           />
-          <StatCard
-            icon={BookOpen}
-            label="Last mood"
-            value={mood ? mood[0].toUpperCase() + mood.slice(1) : "—"}
-            hint={`${journalRows.length} total entries`}
-          />
-        </div>
-
-        <Separator />
-
-        <Tabs defaultValue="money">
-          <TabsList className="w-full sm:w-fit">
-            <TabsTrigger value="money">
-              <Wallet data-icon="inline-start" className="size-4" />
-              <span className="hidden sm:inline">Money</span>
-            </TabsTrigger>
-            <TabsTrigger value="nutrition">
-              <Utensils data-icon="inline-start" className="size-4" />
-              <span className="hidden sm:inline">Nutrition</span>
-            </TabsTrigger>
-            <TabsTrigger value="gym">
-              <Dumbbell data-icon="inline-start" className="size-4" />
-              <span className="hidden sm:inline">Gym</span>
-            </TabsTrigger>
-            <TabsTrigger value="weight">
-              <Scale data-icon="inline-start" className="size-4" />
-              <span className="hidden sm:inline">Weight</span>
-            </TabsTrigger>
-            <TabsTrigger value="journal">
-              <BookOpen data-icon="inline-start" className="size-4" />
-              <span className="hidden sm:inline">Journal</span>
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="money" className="mt-4">
-            <MoneySection
-              monthly={monthlyMoney(moneyRows)}
-              categoriesThisMonth={categorySpend(moneyRows, 0)}
-              categoriesLastMonth={categorySpend(moneyRows, 1)}
-              recent={moneyRows.slice(0, 10)}
-            />
-          </TabsContent>
-          <TabsContent value="nutrition" className="mt-4">
-            <NutritionSection
-              daily={dailyNutrition(nutritionRows)}
-              recent={nutritionRows.slice(0, 10)}
-            />
-          </TabsContent>
-          <TabsContent value="gym" className="mt-4">
-            <GymSection
-              volume={dailyGymVolume(gymRows)}
-              prs={recentPRs(gymRows)}
-              recent={gymRows.slice(0, 10)}
-            />
-          </TabsContent>
-          <TabsContent value="weight" className="mt-4">
-            <WeightSection series={series} latest={latestWeighIn} />
-          </TabsContent>
-          <TabsContent value="journal" className="mt-4">
-            <JournalSection
-              moods={moodCounts(journalRows)}
-              recent={journalRows.slice(0, 5)}
-            />
-          </TabsContent>
-        </Tabs>
-      </main>
-    </div>
+        ),
+      }}
+    />
   )
 }

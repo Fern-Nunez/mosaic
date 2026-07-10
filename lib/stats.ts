@@ -1,8 +1,10 @@
 import type {
+  AccountRow,
   GymRow,
   JournalRow,
-  MoneyRow,
   NutritionRow,
+  SubscriptionRow,
+  TransactionRow,
   WeightRow,
 } from "@/lib/types"
 
@@ -47,7 +49,10 @@ function shortDate(key: string): string {
 
 export type MonthlyMoney = { month: string; income: number; expenses: number }
 
-export function monthlyMoney(rows: MoneyRow[], months = 6): MonthlyMoney[] {
+export function monthlyMoney(
+  rows: TransactionRow[],
+  months = 6
+): MonthlyMoney[] {
   const now = new Date()
   const buckets: { key: string; income: number; expenses: number }[] = []
   for (let i = months - 1; i >= 0; i--) {
@@ -60,7 +65,7 @@ export function monthlyMoney(rows: MoneyRow[], months = 6): MonthlyMoney[] {
     if (!bucket) continue
     const amount = Number(row.amount) || 0
     if (row.transaction_type === "income") bucket.income += amount
-    else if (row.transaction_type === "expense") bucket.expenses += amount
+    else bucket.expenses += amount
   }
   return buckets.map((b) => ({
     month: monthLabel(b.key + "-01"),
@@ -72,11 +77,14 @@ export function monthlyMoney(rows: MoneyRow[], months = 6): MonthlyMoney[] {
 export type CategorySpend = { category: string; total: number }
 
 /**
- * Expense totals by category, largest first.
+ * Net expense totals by category, largest first. Zelle *income* is
+ * subtracted from the category — treated as a reimbursement (a friend
+ * paying you back for their share of dinner reduces your Food spend).
+ * Categories that end up at or below zero are filtered out.
  * `monthOffset` is 0 for the current month, 1 for last month, etc.
  */
 export function categorySpend(
-  rows: MoneyRow[],
+  rows: TransactionRow[],
   monthOffset = 0
 ): CategorySpend[] {
   const now = new Date()
@@ -85,20 +93,106 @@ export function categorySpend(
   ).slice(0, 7)
   const totals = new Map<string, number>()
   for (const row of rows) {
-    if (row.transaction_type !== "expense") continue
     if (!row.date.startsWith(monthKey)) continue
     const cat = row.category ?? "Other"
-    totals.set(cat, (totals.get(cat) ?? 0) + (Number(row.amount) || 0))
+    const amount = Number(row.amount) || 0
+    if (row.transaction_type === "expense") {
+      totals.set(cat, (totals.get(cat) ?? 0) + amount)
+    } else if (
+      row.transaction_type === "income" &&
+      row.payment_method === "zelle"
+    ) {
+      totals.set(cat, (totals.get(cat) ?? 0) - amount)
+    }
   }
   return [...totals.entries()]
     .map(([category, total]) => ({
       category,
       total: Math.round(total * 100) / 100,
     }))
+    .filter((c) => c.total > 0)
     .sort((a, b) => b.total - a.total)
 }
 
-export function moneyTotalsThisMonth(rows: MoneyRow[]) {
+export type PaymentMethodTotals = {
+  method: string
+  received: number
+  sent: number
+  net: number
+}
+
+/**
+ * Income (received) and expense (sent) totals by payment method,
+ * e.g. Zelle vs. Credit Card.
+ * `monthOffset` is 0 for the current month, 1 for last month, etc.
+ */
+export function paymentMethodTotals(
+  rows: TransactionRow[],
+  monthOffset = 0
+): PaymentMethodTotals[] {
+  const now = new Date()
+  const monthKey = toDateKey(
+    new Date(now.getFullYear(), now.getMonth() - monthOffset, 1)
+  ).slice(0, 7)
+  const totals = new Map<string, { received: number; sent: number }>()
+  for (const row of rows) {
+    if (!row.date.startsWith(monthKey)) continue
+    const method = row.payment_method?.trim() || "Other"
+    const entry = totals.get(method) ?? { received: 0, sent: 0 }
+    const amount = Number(row.amount) || 0
+    if (row.transaction_type === "income") entry.received += amount
+    else entry.sent += amount
+    totals.set(method, entry)
+  }
+  return [...totals.entries()]
+    .map(([method, t]) => ({
+      method,
+      received: Math.round(t.received * 100) / 100,
+      sent: Math.round(t.sent * 100) / 100,
+      net: Math.round((t.received - t.sent) * 100) / 100,
+    }))
+    .sort((a, b) => b.received + b.sent - (a.received + a.sent))
+}
+
+export type AccountActivity = AccountRow & {
+  moneyIn: number
+  moneyOut: number
+}
+
+/**
+ * Money in and out of each account for a month. Expenses count against
+ * the account; income counts toward it.
+ * `monthOffset` is 0 for the current month, 1 for last month, etc.
+ */
+export function accountActivity(
+  rows: TransactionRow[],
+  accounts: AccountRow[],
+  monthOffset = 0
+): AccountActivity[] {
+  const now = new Date()
+  const monthKey = toDateKey(
+    new Date(now.getFullYear(), now.getMonth() - monthOffset, 1)
+  ).slice(0, 7)
+  const byId = new Map<string, AccountActivity>(
+    accounts.map((a) => [a.id, { ...a, moneyIn: 0, moneyOut: 0 }])
+  )
+  for (const row of rows) {
+    if (!row.date.startsWith(monthKey)) continue
+    if (!row.account_id) continue
+    const account = byId.get(row.account_id)
+    if (!account) continue
+    const amount = Number(row.amount) || 0
+    if (row.transaction_type === "income") account.moneyIn += amount
+    else account.moneyOut += amount
+  }
+  return [...byId.values()].map((a) => ({
+    ...a,
+    moneyIn: Math.round(a.moneyIn * 100) / 100,
+    moneyOut: Math.round(a.moneyOut * 100) / 100,
+  }))
+}
+
+export function moneyTotalsThisMonth(rows: TransactionRow[]) {
   const monthKey = todayKey().slice(0, 7)
   let income = 0
   let expenses = 0
@@ -106,9 +200,34 @@ export function moneyTotalsThisMonth(rows: MoneyRow[]) {
     if (!row.date.startsWith(monthKey)) continue
     const amount = Number(row.amount) || 0
     if (row.transaction_type === "income") income += amount
-    else if (row.transaction_type === "expense") expenses += amount
+    else expenses += amount
   }
   return { income, expenses, net: income - expenses }
+}
+
+/**
+ * Normalize any subscription cost to what it works out to per month,
+ * so mixed-cycle subscriptions can be summed for a monthly total.
+ */
+export function subscriptionMonthlyCost(sub: SubscriptionRow): number {
+  const amount = Number(sub.amount) || 0
+  switch (sub.billing_cycle) {
+    case "weekly":
+      return amount * 4.345
+    case "monthly":
+      return amount
+    case "quarterly":
+      return amount / 3
+    case "yearly":
+      return amount / 12
+  }
+}
+
+export function activeSubscriptionsMonthly(rows: SubscriptionRow[]): number {
+  const total = rows
+    .filter((s) => s.is_active)
+    .reduce((sum, s) => sum + subscriptionMonthlyCost(s), 0)
+  return Math.round(total * 100) / 100
 }
 
 // ---------- Nutrition ----------
