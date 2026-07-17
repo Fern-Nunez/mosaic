@@ -6,6 +6,7 @@ import {
   setLocalStorageItem,
   useLocalStorageItem,
 } from "@/hooks/use-local-storage"
+import { uuid } from "@/lib/utils"
 
 export type Workspace = { id: string; name: string }
 
@@ -60,7 +61,7 @@ export function WorkspaceProvider({
       active,
       setActive: (id) => setLocalStorageItem(ACTIVE_KEY, id),
       addWorkspace: (name) => {
-        const id = crypto.randomUUID()
+        const id = uuid()
         setLocalStorageItem(
           WORKSPACES_KEY,
           JSON.stringify([...workspaces, { id, name }])

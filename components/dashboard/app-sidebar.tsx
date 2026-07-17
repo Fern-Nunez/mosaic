@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation"
 import { LogOut } from "lucide-react"
 
 import { signout } from "@/app/login/actions"
+import { SettingsDialog } from "@/components/dashboard/settings-dialog"
 import {
   DASHBOARD_VIEWS,
   handleViewClick,
@@ -80,6 +81,9 @@ export function AppSidebar({ userEmail }: { userEmail: string }) {
             <div className="truncate px-2 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
               {userEmail}
             </div>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SettingsDialog />
           </SidebarMenuItem>
           <SidebarMenuItem>
             <form action={signout}>

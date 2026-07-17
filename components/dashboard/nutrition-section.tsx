@@ -1,5 +1,7 @@
 "use client"
 
+import * as React from "react"
+import { CalendarDays } from "lucide-react"
 import {
   Bar,
   CartesianGrid,
@@ -9,9 +11,17 @@ import {
   YAxis,
 } from "recharts"
 
-import type { DailyNutrition } from "@/lib/stats"
+import { lastNDayKeys, todayKey, type DailyNutrition } from "@/lib/stats"
 import type { NutritionRow } from "@/lib/types"
+import { MealSnap } from "@/components/dashboard/meal-snap"
 import { Badge } from "@/components/ui/badge"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Card,
   CardContent,
@@ -43,15 +53,72 @@ const nutritionConfig = {
   fat: { label: "Fat (g)", color: "var(--chart-4)" },
 } satisfies ChartConfig
 
+// "Wed, Jul 9" for a YYYY-MM-DD key, parsed in local time.
+function dayLabel(key: string): string {
+  const [y, m, d] = key.split("-").map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  })
+}
+
 export function NutritionSection({
   daily,
-  recent,
+  meals,
+  userId,
 }: {
   daily: DailyNutrition[]
-  recent: NutritionRow[]
+  meals: NutritionRow[]
+  userId: string
 }) {
+  const [day, setDay] = React.useState(() => todayKey())
+
+  // Today through one week back, newest first.
+  const dayOptions = React.useMemo(() => {
+    return lastNDayKeys(8)
+      .reverse()
+      .map((key, index) => ({
+        key,
+        label:
+          index === 0 ? "Today" : index === 1 ? "Yesterday" : dayLabel(key),
+      }))
+  }, [])
+
+  const dayMeals = meals.filter((m) => m.date === day)
+  const totals = dayMeals.reduce(
+    (sum, m) => ({
+      calories: sum.calories + (Number(m.calories) || 0),
+      protein: sum.protein + (Number(m.protein) || 0),
+    }),
+    { calories: 0, protein: 0 }
+  )
+  const selectedLabel =
+    dayOptions.find((option) => option.key === day)?.label ?? dayLabel(day)
+
   return (
     <div className="grid gap-4">
+      <div className="flex items-center justify-end gap-2">
+        <Select
+          value={day}
+          onValueChange={(value) => {
+            if (value !== null) setDay(value)
+          }}
+        >
+          <SelectTrigger className="w-40">
+            <CalendarDays className="size-4 shrink-0 text-muted-foreground" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {dayOptions.map((option) => (
+              <SelectItem key={option.key} value={option.key}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <MealSnap userId={userId} />
+      </div>
       <Card>
         <CardHeader>
           <CardTitle>Calories & macros</CardTitle>
@@ -120,17 +187,22 @@ export function NutritionSection({
 
       <Card>
         <CardHeader>
-          <CardTitle>Recent meals</CardTitle>
-          <CardDescription>Your latest 10 entries</CardDescription>
+          <CardTitle>Meals · {selectedLabel}</CardTitle>
+          <CardDescription>
+            {dayMeals.length === 0
+              ? "Nothing logged on this day."
+              : `${totals.calories.toLocaleString()} cal · ${Math.round(totals.protein)}g protein · ${dayMeals.length} ${dayMeals.length === 1 ? "entry" : "entries"}`}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {recent.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No meals logged yet.</p>
+          {dayMeals.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No meals logged {selectedLabel === "Today" ? "yet today" : "on this day"}.
+            </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
                   <TableHead>Meal</TableHead>
                   <TableHead>Food</TableHead>
                   <TableHead className="text-right">Calories</TableHead>
@@ -138,9 +210,8 @@ export function NutritionSection({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recent.map((m) => (
+                {dayMeals.map((m) => (
                   <TableRow key={m.id}>
-                    <TableCell className="whitespace-nowrap">{m.date}</TableCell>
                     <TableCell>
                       <Badge variant="secondary" className="capitalize">
                         {m.meal_type ?? "unknown"}

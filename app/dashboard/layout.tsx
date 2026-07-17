@@ -3,7 +3,6 @@ import { redirect } from "next/navigation"
 
 import { AppSidebar } from "@/components/dashboard/app-sidebar"
 import { DashboardTitle } from "@/components/dashboard/dashboard-sections"
-import { MobileViewNav } from "@/components/dashboard/mobile-view-nav"
 import {
   ScratchPanel,
   ScratchPanelProvider,
@@ -52,7 +51,6 @@ export default async function DashboardLayout({
               <DashboardTitle />
               <ScratchPanelTrigger className="ml-auto" />
             </header>
-            <MobileViewNav />
             <div className="flex flex-1 items-start">
               <div className="min-w-0 flex-1 px-4 py-6">{children}</div>
               <ScratchPanel />

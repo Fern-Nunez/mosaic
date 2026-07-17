@@ -16,6 +16,7 @@ import {
   categorySpend,
   dailyGymVolume,
   dailyNutrition,
+  lastNDayKeys,
   latestMood,
   monthlyMoney,
   moneyTotalsThisMonth,
@@ -240,7 +241,10 @@ export default async function DashboardPage() {
         nutrition: (
           <NutritionSection
             daily={dailyNutrition(nutritionRows)}
-            recent={nutritionRows.slice(0, 10)}
+            meals={nutritionRows.filter(
+              (row) => row.date >= lastNDayKeys(8)[0]
+            )}
+            userId={user.id}
           />
         ),
         gym: (

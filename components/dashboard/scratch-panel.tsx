@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { useWorkspace } from "@/components/dashboard/workspace-context"
 import { createClient } from "@/lib/supabase/client"
+import { uuid } from "@/lib/utils"
 
 type Todo = { id: string; text: string; done: boolean }
 
@@ -168,7 +169,7 @@ export function ScratchPanelProvider({
         }, NOTE_SAVE_DELAY_MS)
       },
       addTodo: (text) => {
-        const todo = { id: crypto.randomUUID(), text, done: false }
+        const todo = { id: uuid(), text, done: false }
         setTodos([...todos, todo])
         supabase
           .from("todos")
