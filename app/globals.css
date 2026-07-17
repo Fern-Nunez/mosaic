@@ -128,3 +128,54 @@
     @apply font-sans;
   }
 }
+
+/* Journal book: white ruled pages inside a black cover, in both themes. */
+:root {
+  --journal-paper: #ffffff;
+  --journal-paper-edge: #e6e6e6;
+  --journal-ink: #2a2a2a;
+  --journal-line: rgba(0, 0, 0, 0.1);
+  --journal-margin: rgba(210, 70, 70, 0.35);
+}
+
+.dark {
+  --journal-paper: #f6f5f3;
+  --journal-paper-edge: #d6d5d2;
+  --journal-ink: #2a2a2a;
+  --journal-line: rgba(0, 0, 0, 0.1);
+  --journal-margin: rgba(210, 70, 70, 0.35);
+}
+
+/* Journal book: a page-turn flip when navigating between entries. The
+   direction class sets which edge the page pivots from. */
+@keyframes page-turn-forward {
+  from {
+    opacity: 0.2;
+    transform: perspective(1600px) rotateY(-24deg) translateX(14px);
+  }
+  to {
+    opacity: 1;
+    transform: perspective(1600px) rotateY(0) translateX(0);
+  }
+}
+
+@keyframes page-turn-back {
+  from {
+    opacity: 0.2;
+    transform: perspective(1600px) rotateY(24deg) translateX(-14px);
+  }
+  to {
+    opacity: 1;
+    transform: perspective(1600px) rotateY(0) translateX(0);
+  }
+}
+
+.animate-page-forward {
+  transform-origin: left center;
+  animation: page-turn-forward 0.4s ease-out;
+}
+
+.animate-page-back {
+  transform-origin: right center;
+  animation: page-turn-back 0.4s ease-out;
+}

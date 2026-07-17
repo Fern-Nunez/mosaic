@@ -13,14 +13,14 @@ export function DashboardSections({
   const view = resolveView(searchParams.get("view"))
 
   return (
-    <div className="space-y-6">
+    <div className="flex h-full flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">
           {view.heading}
         </h1>
         <p className="text-sm text-muted-foreground">{view.description}</p>
       </div>
-      {views[view.id]}
+      <div className="min-h-0 flex-1">{views[view.id]}</div>
     </div>
   )
 }

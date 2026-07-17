@@ -16,11 +16,11 @@ import {
   categorySpend,
   dailyGymVolume,
   dailyNutrition,
+  DEFAULT_NUTRITION_GOALS,
   lastNDayKeys,
   latestMood,
   monthlyMoney,
   moneyTotalsThisMonth,
-  moodCounts,
   paymentMethodTotals,
   nutritionToday,
   recentPRs,
@@ -156,6 +156,22 @@ export default async function DashboardPage() {
       .order("date", { ascending: true }),
   ])
 
+  // Daily nutrition goals live on user_settings so they sync across
+  // devices. Read defensively: if the row or goal columns aren't there yet
+  // (migration not applied), fall back to defaults so the tab still works.
+  const { data: settingsData } = await supabase
+    .from("user_settings")
+    .select("calorie_goal, protein_goal, carb_goal, fat_goal")
+    .eq("user_id", user.id)
+    .maybeSingle()
+
+  const nutritionGoals = {
+    calories: settingsData?.calorie_goal ?? DEFAULT_NUTRITION_GOALS.calories,
+    protein: settingsData?.protein_goal ?? DEFAULT_NUTRITION_GOALS.protein,
+    carbs: settingsData?.carb_goal ?? DEFAULT_NUTRITION_GOALS.carbs,
+    fat: settingsData?.fat_goal ?? DEFAULT_NUTRITION_GOALS.fat,
+  }
+
   const transactionRows = (transactions.data ?? []) as TransactionRow[]
   const accountRows = (accounts.data ?? []) as AccountRow[]
   const subscriptionRows = (subscriptions.data ?? []) as SubscriptionRow[]
@@ -244,6 +260,7 @@ export default async function DashboardPage() {
             meals={nutritionRows.filter(
               (row) => row.date >= lastNDayKeys(8)[0]
             )}
+            goals={nutritionGoals}
             userId={user.id}
           />
         ),
@@ -256,10 +273,7 @@ export default async function DashboardPage() {
         ),
         weight: <WeightSection series={series} latest={latestWeighIn} />,
         journal: (
-          <JournalSection
-            moods={moodCounts(journalRows)}
-            recent={journalRows.slice(0, 5)}
-          />
+          <JournalSection entries={journalRows} userId={user.id} />
         ),
       }}
     />

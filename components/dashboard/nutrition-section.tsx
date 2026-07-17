@@ -1,20 +1,38 @@
 "use client"
 
 import * as React from "react"
-import { CalendarDays } from "lucide-react"
 import {
-  Bar,
-  CartesianGrid,
-  ComposedChart,
-  Line,
-  XAxis,
-  YAxis,
-} from "recharts"
+  CalendarDays,
+  Droplet,
+  Drumstick,
+  Flame,
+  Loader2,
+  SlidersHorizontal,
+  Wheat,
+} from "lucide-react"
 
-import { lastNDayKeys, todayKey, type DailyNutrition } from "@/lib/stats"
+import {
+  lastNDayKeys,
+  todayKey,
+  type DailyNutrition,
+  type NutritionGoals,
+} from "@/lib/stats"
 import type { NutritionRow } from "@/lib/types"
+import { cn } from "@/lib/utils"
 import { MealSnap } from "@/components/dashboard/meal-snap"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
@@ -30,14 +48,6 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import {
-  ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart"
-import {
   Table,
   TableBody,
   TableCell,
@@ -46,12 +56,59 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-const nutritionConfig = {
-  calories: { label: "Calories", color: "var(--chart-1)" },
-  protein: { label: "Protein (g)", color: "var(--chart-2)" },
-  carbs: { label: "Carbs (g)", color: "var(--chart-3)" },
-  fat: { label: "Fat (g)", color: "var(--chart-4)" },
-} satisfies ChartConfig
+type MacroKey = keyof NutritionGoals
+
+// One vivid color identity per macro: an icon chip, a gradient bar, and a
+// matching percentage tint. This is what gives the panel its color.
+const MACROS: {
+  key: MacroKey
+  label: string
+  unit: string
+  icon: React.ComponentType<{ className?: string }>
+  chip: string
+  bar: string
+  text: string
+}[] = [
+  {
+    key: "calories",
+    label: "Calories",
+    unit: "cal",
+    icon: Flame,
+    chip: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+    bar: "from-amber-400 to-orange-500",
+    text: "text-amber-600 dark:text-amber-400",
+  },
+  {
+    key: "protein",
+    label: "Protein",
+    unit: "g",
+    icon: Drumstick,
+    chip: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+    bar: "from-emerald-400 to-green-600",
+    text: "text-emerald-600 dark:text-emerald-400",
+  },
+  {
+    key: "carbs",
+    label: "Carbs",
+    unit: "g",
+    icon: Wheat,
+    chip: "bg-sky-500/15 text-sky-600 dark:text-sky-400",
+    bar: "from-sky-400 to-blue-600",
+    text: "text-sky-600 dark:text-sky-400",
+  },
+  {
+    key: "fat",
+    label: "Fat",
+    unit: "g",
+    icon: Droplet,
+    chip: "bg-violet-500/15 text-violet-600 dark:text-violet-400",
+    bar: "from-violet-400 to-purple-600",
+    text: "text-violet-600 dark:text-violet-400",
+  },
+]
+
+// Sentinel selection value for the whole-week view.
+const WEEK = "week"
 
 // "Wed, Jul 9" for a YYYY-MM-DD key, parsed in local time.
 function dayLabel(key: string): string {
@@ -66,43 +123,77 @@ function dayLabel(key: string): string {
 export function NutritionSection({
   daily,
   meals,
+  goals: initialGoals,
   userId,
 }: {
   daily: DailyNutrition[]
   meals: NutritionRow[]
+  goals: NutritionGoals
   userId: string
 }) {
-  const [day, setDay] = React.useState(() => todayKey())
+  // Goals load from the database (so they sync across devices) but stay
+  // editable here without a full reload.
+  const [goals, setGoals] = React.useState<NutritionGoals>(initialGoals)
 
-  // Today through one week back, newest first.
-  const dayOptions = React.useMemo(() => {
-    return lastNDayKeys(8)
+  // Selection is either a YYYY-MM-DD day key or the WEEK sentinel.
+  const [selection, setSelection] = React.useState<string>(() => todayKey())
+
+  // "This week" plus today through one week back, newest first.
+  const options = React.useMemo(() => {
+    const days = lastNDayKeys(8)
       .reverse()
       .map((key, index) => ({
         key,
         label:
           index === 0 ? "Today" : index === 1 ? "Yesterday" : dayLabel(key),
       }))
+    return [{ key: WEEK, label: "This week" }, ...days]
   }, [])
 
-  const dayMeals = meals.filter((m) => m.date === day)
-  const totals = dayMeals.reduce(
-    (sum, m) => ({
-      calories: sum.calories + (Number(m.calories) || 0),
-      protein: sum.protein + (Number(m.protein) || 0),
-    }),
-    { calories: 0, protein: 0 }
+  const isWeek = selection === WEEK
+
+  // The day(s) feeding the bars: last 7 days for the week view, or just
+  // the one selected day.
+  const periodDays = React.useMemo(
+    () => (isWeek ? daily.slice(-7) : daily.filter((d) => d.date === selection)),
+    [isWeek, daily, selection]
   )
+
+  // Totals eaten across the selected period, one number per macro.
+  const eaten = React.useMemo(() => {
+    return periodDays.reduce(
+      (sum, d) => ({
+        calories: sum.calories + d.calories,
+        protein: sum.protein + d.protein,
+        carbs: sum.carbs + d.carbs,
+        fat: sum.fat + d.fat,
+      }),
+      { calories: 0, protein: 0, carbs: 0, fat: 0 }
+    )
+  }, [periodDays])
+
+  const targetMultiplier = isWeek ? 7 : 1
+
+  const weekStart = React.useMemo(() => lastNDayKeys(7)[0], [])
+  const shownMeals = React.useMemo(() => {
+    const list = isWeek
+      ? meals.filter((m) => m.date >= weekStart)
+      : meals.filter((m) => m.date === selection)
+    return [...list].sort((a, b) => b.date.localeCompare(a.date))
+  }, [isWeek, meals, selection, weekStart])
+
   const selectedLabel =
-    dayOptions.find((option) => option.key === day)?.label ?? dayLabel(day)
+    options.find((option) => option.key === selection)?.label ??
+    dayLabel(selection)
 
   return (
     <div className="grid gap-4">
       <div className="flex items-center justify-end gap-2">
+        <GoalsDialog goals={goals} onSaved={setGoals} />
         <Select
-          value={day}
+          value={selection}
           onValueChange={(value) => {
-            if (value !== null) setDay(value)
+            if (value) setSelection(value)
           }}
         >
           <SelectTrigger className="w-40">
@@ -110,7 +201,7 @@ export function NutritionSection({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {dayOptions.map((option) => (
+            {options.map((option) => (
               <SelectItem key={option.key} value={option.key}>
                 {option.label}
               </SelectItem>
@@ -119,69 +210,68 @@ export function NutritionSection({
         </Select>
         <MealSnap userId={userId} />
       </div>
-      <Card>
+
+      <Card className="overflow-hidden">
         <CardHeader>
-          <CardTitle>Calories & macros</CardTitle>
+          <CardTitle>How much you&apos;ve eaten</CardTitle>
           <CardDescription>
-            Macros in grams (bars, left) and calories (line, right) — last 14
-            days
+            {isWeek ? "Last 7 days" : selectedLabel} · each bar fills toward
+            your daily goal
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <ChartContainer config={nutritionConfig} className="h-72 w-full">
-            <ComposedChart accessibilityLayer data={daily}>
-              <CartesianGrid vertical={false} />
-              <XAxis
-                dataKey="label"
-                tickLine={false}
-                tickMargin={8}
-                axisLine={false}
-                interval="preserveStartEnd"
-              />
-              <YAxis
-                yAxisId="grams"
-                tickLine={false}
-                axisLine={false}
-                width={40}
-              />
-              <YAxis
-                yAxisId="calories"
-                orientation="right"
-                tickLine={false}
-                axisLine={false}
-                width={45}
-              />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <ChartLegend content={<ChartLegendContent />} />
-              <Bar
-                yAxisId="grams"
-                dataKey="protein"
-                stackId="macros"
-                fill="var(--color-protein)"
-              />
-              <Bar
-                yAxisId="grams"
-                dataKey="carbs"
-                stackId="macros"
-                fill="var(--color-carbs)"
-              />
-              <Bar
-                yAxisId="grams"
-                dataKey="fat"
-                stackId="macros"
-                fill="var(--color-fat)"
-                radius={[4, 4, 0, 0]}
-              />
-              <Line
-                yAxisId="calories"
-                dataKey="calories"
-                type="monotone"
-                stroke="var(--color-calories)"
-                strokeWidth={2}
-                dot={{ r: 3 }}
-              />
-            </ComposedChart>
-          </ChartContainer>
+        <CardContent className="grid gap-5">
+          {MACROS.map((macro) => {
+            const Icon = macro.icon
+            const value = Math.round(eaten[macro.key])
+            const target = goals[macro.key] * targetMultiplier
+            const pct = target > 0 ? Math.round((value / target) * 100) : 0
+            const width = Math.min(100, pct)
+            return (
+              <div key={macro.key} className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={cn(
+                      "flex size-9 shrink-0 items-center justify-center rounded-lg",
+                      macro.chip
+                    )}
+                  >
+                    <Icon className="size-4.5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{macro.label}</p>
+                    <p className="text-xs tabular-nums text-muted-foreground">
+                      {value.toLocaleString()} / {target.toLocaleString()}{" "}
+                      {macro.unit}
+                    </p>
+                  </div>
+                  <p
+                    className={cn(
+                      "text-lg font-semibold tabular-nums",
+                      macro.text
+                    )}
+                  >
+                    {pct}%
+                  </p>
+                </div>
+                <div
+                  className="h-2.5 w-full overflow-hidden rounded-full bg-muted"
+                  role="progressbar"
+                  aria-valuenow={value}
+                  aria-valuemin={0}
+                  aria-valuemax={target}
+                  aria-label={`${macro.label}: ${value} of ${target} ${macro.unit}`}
+                >
+                  <div
+                    className={cn(
+                      "h-full rounded-full bg-gradient-to-r transition-all",
+                      macro.bar
+                    )}
+                    style={{ width: `${width}%` }}
+                  />
+                </div>
+              </div>
+            )
+          })}
         </CardContent>
       </Card>
 
@@ -189,20 +279,29 @@ export function NutritionSection({
         <CardHeader>
           <CardTitle>Meals · {selectedLabel}</CardTitle>
           <CardDescription>
-            {dayMeals.length === 0
-              ? "Nothing logged on this day."
-              : `${totals.calories.toLocaleString()} cal · ${Math.round(totals.protein)}g protein · ${dayMeals.length} ${dayMeals.length === 1 ? "entry" : "entries"}`}
+            {shownMeals.length === 0
+              ? isWeek
+                ? "Nothing logged this week."
+                : "Nothing logged on this day."
+              : `${Math.round(eaten.calories).toLocaleString()} cal · ${Math.round(eaten.protein)}g protein · ${shownMeals.length} ${shownMeals.length === 1 ? "entry" : "entries"}`}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {dayMeals.length === 0 ? (
+          {shownMeals.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No meals logged {selectedLabel === "Today" ? "yet today" : "on this day"}.
+              No meals logged{" "}
+              {isWeek
+                ? "this week"
+                : selectedLabel === "Today"
+                  ? "yet today"
+                  : "on this day"}
+              .
             </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
+                  {isWeek && <TableHead>Day</TableHead>}
                   <TableHead>Meal</TableHead>
                   <TableHead>Food</TableHead>
                   <TableHead className="text-right">Calories</TableHead>
@@ -210,8 +309,13 @@ export function NutritionSection({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {dayMeals.map((m) => (
+                {shownMeals.map((m) => (
                   <TableRow key={m.id}>
+                    {isWeek && (
+                      <TableCell className="whitespace-nowrap text-muted-foreground">
+                        {dayLabel(m.date)}
+                      </TableCell>
+                    )}
                     <TableCell>
                       <Badge variant="secondary" className="capitalize">
                         {m.meal_type ?? "unknown"}
@@ -240,5 +344,144 @@ export function NutritionSection({
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+function GoalsDialog({
+  goals,
+  onSaved,
+}: {
+  goals: NutritionGoals
+  onSaved: (goals: NutritionGoals) => void
+}) {
+  const goalsToDraft = React.useCallback(
+    (g: NutritionGoals): Record<MacroKey, string> => ({
+      calories: String(g.calories),
+      protein: String(g.protein),
+      carbs: String(g.carbs),
+      fat: String(g.fat),
+    }),
+    []
+  )
+
+  const [open, setOpen] = React.useState(false)
+  const [draft, setDraft] = React.useState<Record<MacroKey, string>>(() =>
+    goalsToDraft(goals)
+  )
+  const [busy, setBusy] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
+
+  // Reset the form to the current goals each time the dialog opens.
+  function onOpenChange(next: boolean) {
+    if (next) {
+      setDraft(goalsToDraft(goals))
+      setError(null)
+    }
+    setOpen(next)
+  }
+
+  async function save(event: React.FormEvent) {
+    event.preventDefault()
+    setBusy(true)
+    setError(null)
+    try {
+      const payload: Record<MacroKey, number> = {
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+      }
+      for (const macro of MACROS) {
+        const value = Number(draft[macro.key])
+        if (!Number.isFinite(value) || value <= 0 || value > 100000) {
+          throw new Error(
+            `Enter a ${macro.label.toLowerCase()} goal between 1 and 100,000.`
+          )
+        }
+        payload[macro.key] = Math.round(value)
+      }
+      const res = await fetch("/api/goals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      const json = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(json?.error ?? "Couldn't save your goals.")
+      onSaved(json.goals as NutritionGoals)
+      setOpen(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't save your goals.")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogTrigger
+        render={
+          <Button variant="outline" className="shrink-0">
+            <SlidersHorizontal className="size-4" />
+            <span className="hidden sm:inline">Edit goals</span>
+          </Button>
+        }
+      />
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Daily goals</DialogTitle>
+          <DialogDescription>
+            Your targets for a single day. The bars fill toward these.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={save} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            {MACROS.map((macro) => (
+              <div key={macro.key} className="space-y-1.5">
+                <Label htmlFor={`goal-${macro.key}`}>
+                  {macro.label} ({macro.unit})
+                </Label>
+                <Input
+                  id={`goal-${macro.key}`}
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  value={draft[macro.key]}
+                  onChange={(e) =>
+                    setDraft((d) => ({ ...d, [macro.key]: e.target.value }))
+                  }
+                />
+              </div>
+            ))}
+          </div>
+
+          {error && (
+            <p className="rounded-md border border-destructive/50 bg-destructive/10 p-2 text-xs text-destructive">
+              {error}
+            </p>
+          )}
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={busy}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={busy}>
+              {busy ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                "Save goals"
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }

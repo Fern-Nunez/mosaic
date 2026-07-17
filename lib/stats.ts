@@ -241,6 +241,23 @@ export type DailyNutrition = {
   fat: number
 }
 
+export type NutritionGoals = {
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
+}
+
+// Default daily targets used until the user sets their own (and the
+// fallback when the goals columns/row aren't present yet). Set for a lean
+// bulk from ~126 lbs toward 160 lbs — a calorie surplus with high protein.
+export const DEFAULT_NUTRITION_GOALS: NutritionGoals = {
+  calories: 2800,
+  protein: 160,
+  carbs: 380,
+  fat: 70,
+}
+
 export function dailyNutrition(rows: NutritionRow[], days = 14): DailyNutrition[] {
   const keys = lastNDayKeys(days)
   const byKey = new Map<string, DailyNutrition>(
