@@ -78,7 +78,7 @@ export function AppSidebar({ userEmail }: { userEmail: string }) {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <div className="truncate px-2 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
+            <div className="truncate px-2 text-xs text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden">
               {userEmail}
             </div>
           </SidebarMenuItem>

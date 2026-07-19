@@ -1,3 +1,4 @@
+import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { BookOpen, Dumbbell, Scale, Utensils, Wallet } from "lucide-react"
 
@@ -102,6 +103,11 @@ export default async function DashboardPage() {
     redirect("/login")
   }
 
+  // Which dashboard (workspace) is active — the switcher sets this cookie
+  // and refreshes, so every query below is scoped to one dashboard.
+  const cookieStore = await cookies()
+  const workspace = cookieStore.get("mosaic-workspace")?.value ?? "personal"
+
   // Catch up any subscriptions whose due_date has passed: generate the
   // matching transactions and advance the schedule. Idempotent — if
   // nothing's due, it's a no-op.
@@ -115,6 +121,7 @@ export default async function DashboardPage() {
         "id, date, amount, category, transaction_type, description, payment_method, account_id"
       )
       .eq("user_id", user.id)
+      .eq("workspace", workspace)
       .order("date", { ascending: false }),
     supabase
       .from("accounts")
@@ -122,6 +129,7 @@ export default async function DashboardPage() {
         "id, name, account_type, institution, last_four, credit_limit, credit_used, payment_due_date, notes"
       )
       .eq("user_id", user.id)
+      .eq("workspace", workspace)
       .order("created_at", { ascending: true }),
     supabase
       .from("subscriptions")
@@ -129,6 +137,7 @@ export default async function DashboardPage() {
         "id, name, amount, billing_cycle, category, account_id, due_date, is_active, notes"
       )
       .eq("user_id", user.id)
+      .eq("workspace", workspace)
       .order("due_date", { ascending: true, nullsFirst: false }),
     supabase
       .from("nutrition")
@@ -136,6 +145,7 @@ export default async function DashboardPage() {
         "id, date, meal_type, food_name, calories, protein, carbs, fat, portion_size, restaurant, notes"
       )
       .eq("user_id", user.id)
+      .eq("workspace", workspace)
       .order("date", { ascending: false }),
     supabase
       .from("gym_weight")
@@ -143,16 +153,19 @@ export default async function DashboardPage() {
         "id, date, workout_name, exercise, sets, reps, weight, unit, personal_record, notes"
       )
       .eq("user_id", user.id)
+      .eq("workspace", workspace)
       .order("date", { ascending: false }),
     supabase
       .from("journal")
       .select("id, date, title, entry, mood, tags")
       .eq("user_id", user.id)
+      .eq("workspace", workspace)
       .order("date", { ascending: false }),
     supabase
       .from("personal_weight")
       .select("id, date, weight, unit, body_fat, waist, chest, arms, legs, notes")
       .eq("user_id", user.id)
+      .eq("workspace", workspace)
       .order("date", { ascending: true }),
   ])
 
@@ -187,8 +200,6 @@ export default async function DashboardPage() {
   const series = weightSeries(weightRows)
   const change = weightChange(series)
   const mood = latestMood(journalRows)
-  const latestWeighIn =
-    weightRows.length > 0 ? weightRows[weightRows.length - 1] : null
 
   return (
     <DashboardSections
@@ -239,8 +250,11 @@ export default async function DashboardPage() {
             <CheckinCalendar />
           </div>
         ),
+        // Keyed by workspace so sections holding client state (journal
+        // entries, weigh-ins, goals) remount with fresh data on switch.
         money: (
           <MoneySection
+            key={workspace}
             monthly={monthlyMoney(transactionRows)}
             categoriesThisMonth={categorySpend(transactionRows, 0)}
             categoriesLastMonth={categorySpend(transactionRows, 1)}
@@ -256,6 +270,7 @@ export default async function DashboardPage() {
         ),
         nutrition: (
           <NutritionSection
+            key={workspace}
             daily={dailyNutrition(nutritionRows)}
             meals={nutritionRows.filter(
               (row) => row.date >= lastNDayKeys(8)[0]
@@ -266,14 +281,21 @@ export default async function DashboardPage() {
         ),
         gym: (
           <GymSection
+            key={workspace}
             volume={dailyGymVolume(gymRows)}
             prs={recentPRs(gymRows)}
             recent={gymRows.slice(0, 10)}
           />
         ),
-        weight: <WeightSection series={series} latest={latestWeighIn} />,
+        weight: (
+          <WeightSection key={workspace} rows={weightRows} userId={user.id} />
+        ),
         journal: (
-          <JournalSection entries={journalRows} userId={user.id} />
+          <JournalSection
+            key={workspace}
+            entries={journalRows}
+            userId={user.id}
+          />
         ),
       }}
     />

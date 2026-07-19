@@ -60,8 +60,9 @@ import {
 } from "@/components/ui/table"
 
 const monthlyConfig = {
-  income: { label: "Income", color: "var(--chart-2)" },
-  expenses: { label: "Expenses", color: "var(--chart-5)" },
+  // Pastels to match the badges: soft green in, soft rose out.
+  income: { label: "Income", color: "#86efac" },
+  expenses: { label: "Expenses", color: "#fda4af" },
 } satisfies ChartConfig
 
 const usd = new Intl.NumberFormat("en-US", {
@@ -69,25 +70,25 @@ const usd = new Intl.NumberFormat("en-US", {
   currency: "USD",
 })
 
-// Hex versions of the CATEGORY_STYLES tints (Tailwind 500-level), so
-// the pie slice for "Food" is the same amber as its badge.
+// Hex versions of the CATEGORY_STYLES tints (Tailwind 300-level pastels),
+// so the pie slice for "Food" matches its badge.
 const CATEGORY_COLORS: Record<string, string> = {
-  Food: "#f59e0b",
-  Groceries: "#84cc16",
-  Transportation: "#14b8a6",
-  Bills: "#64748b",
-  Utilities: "#06b6d4",
-  Housing: "#f97316",
-  Streaming: "#8b5cf6",
-  Entertainment: "#d946ef",
-  Shopping: "#ec4899",
-  Medical: "#ef4444",
-  Personal: "#0ea5e9",
-  Business: "#6366f1",
-  Gifts: "#f43f5e",
-  Travel: "#10b981",
-  Income: "#22c55e",
-  Other: "#71717a",
+  Food: "#fcd34d",
+  Groceries: "#bef264",
+  Transportation: "#5eead4",
+  Bills: "#cbd5e1",
+  Utilities: "#67e8f9",
+  Housing: "#fdba74",
+  Streaming: "#c4b5fd",
+  Entertainment: "#f0abfc",
+  Shopping: "#f9a8d4",
+  Medical: "#fca5a5",
+  Personal: "#7dd3fc",
+  Business: "#a5b4fc",
+  Gifts: "#fda4af",
+  Travel: "#6ee7b7",
+  Income: "#86efac",
+  Other: "#d4d4d8",
 }
 
 function categoryColor(name: string): string {
@@ -96,45 +97,47 @@ function categoryColor(name: string): string {
 
 // Tinted background + text colors keyed to categories, so each shows
 // the same accent everywhere it appears (badges, filters, etc.).
+// Soft pastel chips: pale 100-level fills with muted 700 text in light
+// mode, translucent tints in dark mode.
 const CATEGORY_STYLES: Record<string, string> = {
-  Food: "bg-amber-500/15 text-amber-700 border-amber-500/20 dark:text-amber-300",
-  Groceries: "bg-lime-500/15 text-lime-700 border-lime-500/20 dark:text-lime-300",
-  Transportation: "bg-teal-500/15 text-teal-700 border-teal-500/20 dark:text-teal-300",
-  Bills: "bg-slate-500/15 text-slate-700 border-slate-500/20 dark:text-slate-300",
-  Utilities: "bg-cyan-500/15 text-cyan-700 border-cyan-500/20 dark:text-cyan-300",
-  Housing: "bg-orange-500/15 text-orange-700 border-orange-500/20 dark:text-orange-300",
-  Streaming: "bg-violet-500/15 text-violet-700 border-violet-500/20 dark:text-violet-300",
-  Entertainment: "bg-fuchsia-500/15 text-fuchsia-700 border-fuchsia-500/20 dark:text-fuchsia-300",
-  Shopping: "bg-pink-500/15 text-pink-700 border-pink-500/20 dark:text-pink-300",
-  Medical: "bg-red-500/15 text-red-700 border-red-500/20 dark:text-red-300",
-  Personal: "bg-sky-500/15 text-sky-700 border-sky-500/20 dark:text-sky-300",
-  Business: "bg-indigo-500/15 text-indigo-700 border-indigo-500/20 dark:text-indigo-300",
-  Gifts: "bg-rose-500/15 text-rose-700 border-rose-500/20 dark:text-rose-300",
-  Travel: "bg-emerald-500/15 text-emerald-700 border-emerald-500/20 dark:text-emerald-300",
-  Income: "bg-green-500/15 text-green-700 border-green-500/20 dark:text-green-300",
-  Other: "bg-zinc-500/15 text-zinc-700 border-zinc-500/20 dark:text-zinc-300",
+  Food: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/20",
+  Groceries: "bg-lime-100 text-lime-700 border-lime-200 dark:bg-lime-500/15 dark:text-lime-300 dark:border-lime-500/20",
+  Transportation: "bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-500/15 dark:text-teal-300 dark:border-teal-500/20",
+  Bills: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-500/15 dark:text-slate-300 dark:border-slate-500/20",
+  Utilities: "bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-500/15 dark:text-cyan-300 dark:border-cyan-500/20",
+  Housing: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-500/15 dark:text-orange-300 dark:border-orange-500/20",
+  Streaming: "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:border-violet-500/20",
+  Entertainment: "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200 dark:bg-fuchsia-500/15 dark:text-fuchsia-300 dark:border-fuchsia-500/20",
+  Shopping: "bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-500/15 dark:text-pink-300 dark:border-pink-500/20",
+  Medical: "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/20",
+  Personal: "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-500/15 dark:text-sky-300 dark:border-sky-500/20",
+  Business: "bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-500/15 dark:text-indigo-300 dark:border-indigo-500/20",
+  Gifts: "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-500/20",
+  Travel: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/20",
+  Income: "bg-green-100 text-green-700 border-green-200 dark:bg-green-500/15 dark:text-green-300 dark:border-green-500/20",
+  Other: "bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-500/15 dark:text-zinc-300 dark:border-zinc-500/20",
 }
 
 const PAYMENT_METHOD_STYLES: Record<string, string> = {
-  credit_card: "bg-indigo-500/15 text-indigo-700 border-indigo-500/20 dark:text-indigo-300",
-  debit_card: "bg-sky-500/15 text-sky-700 border-sky-500/20 dark:text-sky-300",
-  cash: "bg-green-500/15 text-green-700 border-green-500/20 dark:text-green-300",
-  zelle: "bg-violet-500/15 text-violet-700 border-violet-500/20 dark:text-violet-300",
-  venmo: "bg-cyan-500/15 text-cyan-700 border-cyan-500/20 dark:text-cyan-300",
-  cash_app: "bg-lime-500/15 text-lime-700 border-lime-500/20 dark:text-lime-300",
-  apple_pay: "bg-zinc-500/15 text-zinc-700 border-zinc-500/20 dark:text-zinc-300",
-  google_pay: "bg-blue-500/15 text-blue-700 border-blue-500/20 dark:text-blue-300",
-  ach: "bg-slate-500/15 text-slate-700 border-slate-500/20 dark:text-slate-300",
-  check: "bg-amber-500/15 text-amber-700 border-amber-500/20 dark:text-amber-300",
+  credit_card: "bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-500/15 dark:text-indigo-300 dark:border-indigo-500/20",
+  debit_card: "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-500/15 dark:text-sky-300 dark:border-sky-500/20",
+  cash: "bg-green-100 text-green-700 border-green-200 dark:bg-green-500/15 dark:text-green-300 dark:border-green-500/20",
+  zelle: "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:border-violet-500/20",
+  venmo: "bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-500/15 dark:text-cyan-300 dark:border-cyan-500/20",
+  cash_app: "bg-lime-100 text-lime-700 border-lime-200 dark:bg-lime-500/15 dark:text-lime-300 dark:border-lime-500/20",
+  apple_pay: "bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-500/15 dark:text-zinc-300 dark:border-zinc-500/20",
+  google_pay: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/20",
+  ach: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-500/15 dark:text-slate-300 dark:border-slate-500/20",
+  check: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/20",
 }
 
 const ACCOUNT_TYPE_STYLES: Record<string, string> = {
-  credit_card: "bg-indigo-500/15 text-indigo-700 border-indigo-500/20 dark:text-indigo-300",
-  checking: "bg-sky-500/15 text-sky-700 border-sky-500/20 dark:text-sky-300",
-  savings: "bg-emerald-500/15 text-emerald-700 border-emerald-500/20 dark:text-emerald-300",
-  debit: "bg-cyan-500/15 text-cyan-700 border-cyan-500/20 dark:text-cyan-300",
-  cash: "bg-green-500/15 text-green-700 border-green-500/20 dark:text-green-300",
-  investment: "bg-violet-500/15 text-violet-700 border-violet-500/20 dark:text-violet-300",
+  credit_card: "bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-500/15 dark:text-indigo-300 dark:border-indigo-500/20",
+  checking: "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-500/15 dark:text-sky-300 dark:border-sky-500/20",
+  savings: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/20",
+  debit: "bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-500/15 dark:text-cyan-300 dark:border-cyan-500/20",
+  cash: "bg-green-100 text-green-700 border-green-200 dark:bg-green-500/15 dark:text-green-300 dark:border-green-500/20",
+  investment: "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:border-violet-500/20",
 }
 
 const DEFAULT_STYLE = "bg-muted text-muted-foreground border-transparent"

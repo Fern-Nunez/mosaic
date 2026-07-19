@@ -6,6 +6,7 @@ import { Camera, Loader2, RefreshCcw, Sparkles } from "lucide-react"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { createClient } from "@/lib/supabase/client"
+import { useWorkspace } from "@/components/dashboard/workspace-context"
 import type { NutritionRow } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import {
@@ -89,6 +90,7 @@ export function MealSnap({ userId }: { userId: string }) {
   const router = useRouter()
   const isMobile = useIsMobile()
   const supabase = React.useMemo(() => createClient(), [])
+  const { active } = useWorkspace()
   const fileInput = React.useRef<HTMLInputElement>(null)
   const scrollArea = React.useRef<HTMLDivElement>(null)
 
@@ -193,6 +195,7 @@ export function MealSnap({ userId }: { userId: string }) {
     setError(null)
     const { error: err } = await supabase.from("nutrition").insert({
       user_id: userId,
+      workspace: active.id,
       date: localDate(),
       meal_type: mealType,
       food_name: foodName.trim(),

@@ -69,41 +69,42 @@ const MACROS: {
   bar: string
   text: string
 }[] = [
+  // Soft pastel identity per macro: pale chip, gentle gradient bar.
   {
     key: "calories",
     label: "Calories",
     unit: "cal",
     icon: Flame,
-    chip: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
-    bar: "from-amber-400 to-orange-500",
-    text: "text-amber-600 dark:text-amber-400",
+    chip: "bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300",
+    bar: "from-amber-200 to-amber-400",
+    text: "text-amber-600 dark:text-amber-300",
   },
   {
     key: "protein",
     label: "Protein",
     unit: "g",
     icon: Drumstick,
-    chip: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
-    bar: "from-emerald-400 to-green-600",
-    text: "text-emerald-600 dark:text-emerald-400",
+    chip: "bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300",
+    bar: "from-rose-200 to-rose-400",
+    text: "text-rose-600 dark:text-rose-300",
   },
   {
     key: "carbs",
     label: "Carbs",
     unit: "g",
     icon: Wheat,
-    chip: "bg-sky-500/15 text-sky-600 dark:text-sky-400",
-    bar: "from-sky-400 to-blue-600",
-    text: "text-sky-600 dark:text-sky-400",
+    chip: "bg-sky-100 text-sky-600 dark:bg-sky-500/15 dark:text-sky-300",
+    bar: "from-sky-200 to-sky-400",
+    text: "text-sky-600 dark:text-sky-300",
   },
   {
     key: "fat",
     label: "Fat",
     unit: "g",
     icon: Droplet,
-    chip: "bg-violet-500/15 text-violet-600 dark:text-violet-400",
-    bar: "from-violet-400 to-purple-600",
-    text: "text-violet-600 dark:text-violet-400",
+    chip: "bg-violet-100 text-violet-600 dark:bg-violet-500/15 dark:text-violet-300",
+    bar: "from-violet-200 to-violet-400",
+    text: "text-violet-600 dark:text-violet-300",
   },
 ]
 

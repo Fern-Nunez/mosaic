@@ -16,6 +16,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -32,12 +33,21 @@ export function WorkspaceSwitcher() {
   const { workspaces, active, setActive, addWorkspace } = useWorkspace()
   const [dialogOpen, setDialogOpen] = React.useState(false)
   const [name, setName] = React.useState("")
+  const [busy, setBusy] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
 
-  function createWorkspace(event: React.FormEvent) {
+  async function createWorkspace(event: React.FormEvent) {
     event.preventDefault()
     const trimmed = name.trim()
     if (!trimmed) return
-    addWorkspace(trimmed)
+    setBusy(true)
+    setError(null)
+    const err = await addWorkspace(trimmed)
+    setBusy(false)
+    if (err) {
+      setError(err)
+      return
+    }
     setName("")
     setDialogOpen(false)
   }
@@ -56,11 +66,11 @@ export function WorkspaceSwitcher() {
                   <span className="truncate font-semibold tracking-tight">
                     {active.name}
                   </span>
-                  <span className="truncate text-xs text-muted-foreground">
+                  <span className="truncate text-xs text-sidebar-foreground/60">
                     Mosaic
                   </span>
                 </div>
-                <ChevronsUpDown className="ml-auto size-4 text-muted-foreground" />
+                <ChevronsUpDown className="ml-auto size-4 text-sidebar-foreground/50" />
               </SidebarMenuButton>
             }
           />
@@ -68,16 +78,20 @@ export function WorkspaceSwitcher() {
             className="w-(--anchor-width) min-w-56"
             align="start"
           >
-            <DropdownMenuLabel>Dashboards</DropdownMenuLabel>
-            {workspaces.map((workspace) => (
-              <DropdownMenuItem
-                key={workspace.id}
-                onClick={() => setActive(workspace.id)}
-              >
-                <span className="flex-1 truncate">{workspace.name}</span>
-                {workspace.id === active.id && <Check className="size-4" />}
-              </DropdownMenuItem>
-            ))}
+            {/* GroupLabel throws unless it's inside a Menu.Group — this
+                wrapper is what makes the switcher open without crashing. */}
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Dashboards</DropdownMenuLabel>
+              {workspaces.map((workspace) => (
+                <DropdownMenuItem
+                  key={workspace.id}
+                  onClick={() => setActive(workspace.id)}
+                >
+                  <span className="flex-1 truncate">{workspace.name}</span>
+                  {workspace.id === active.id && <Check className="size-4" />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => setDialogOpen(true)}>
               <Plus className="size-4" />
@@ -103,16 +117,22 @@ export function WorkspaceSwitcher() {
                 aria-label="Dashboard name"
                 autoFocus
               />
+              {error && (
+                <p className="rounded-md border border-destructive/50 bg-destructive/10 p-2 text-xs text-destructive">
+                  {error}
+                </p>
+              )}
               <DialogFooter>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => setDialogOpen(false)}
+                  disabled={busy}
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={!name.trim()}>
-                  Create
+                <Button type="submit" disabled={!name.trim() || busy}>
+                  {busy ? "Creating…" : "Create"}
                 </Button>
               </DialogFooter>
             </form>

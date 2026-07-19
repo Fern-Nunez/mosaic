@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 
 import { createClient } from "@/lib/supabase/client"
+import { useWorkspace } from "@/components/dashboard/workspace-context"
 import type { AccountRow, BillingCycle, SubscriptionRow } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import {
@@ -191,6 +192,7 @@ function DialogShell({
 export function AddAccountDialog() {
   const router = useRouter()
   const supabase = React.useMemo(() => createClient(), [])
+  const { active } = useWorkspace()
   const [open, setOpen] = React.useState(false)
   const [submitting, setSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -218,6 +220,7 @@ export function AddAccountDialog() {
     setSubmitting(true)
     setError(null)
     const { error: err } = await supabase.from("accounts").insert({
+      workspace: active.id,
       name: name.trim(),
       account_type: type,
       institution: institution.trim() || null,
@@ -335,6 +338,7 @@ export function AddAccountDialog() {
 export function AddTransactionDialog({ accounts }: { accounts: AccountRow[] }) {
   const router = useRouter()
   const supabase = React.useMemo(() => createClient(), [])
+  const { active } = useWorkspace()
   const [open, setOpen] = React.useState(false)
   const [submitting, setSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -364,6 +368,7 @@ export function AddTransactionDialog({ accounts }: { accounts: AccountRow[] }) {
     setSubmitting(true)
     setError(null)
     const { error: err } = await supabase.from("transactions").insert({
+      workspace: active.id,
       date,
       amount: Number(amount),
       transaction_type: type,
@@ -511,6 +516,7 @@ export function SubscriptionDialog({
 }) {
   const router = useRouter()
   const supabase = React.useMemo(() => createClient(), [])
+  const { active } = useWorkspace()
   const isEdit = existing !== undefined
   const [internalOpen, setInternalOpen] = React.useState(false)
   const open = openProp ?? internalOpen
@@ -559,7 +565,9 @@ export function SubscriptionDialog({
           .from("subscriptions")
           .update(payload)
           .eq("id", existing!.id)
-      : await supabase.from("subscriptions").insert(payload)
+      : await supabase
+          .from("subscriptions")
+          .insert({ ...payload, workspace: active.id })
     setSubmitting(false)
     if (err) {
       setError(err.message)

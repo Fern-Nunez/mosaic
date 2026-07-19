@@ -1,5 +1,7 @@
 import { JournalSection } from "@/components/dashboard/journal-section"
+import { WorkspaceProvider } from "@/components/dashboard/workspace-context"
 import type { JournalRow } from "@/lib/types"
+import { DEFAULT_WORKSPACES } from "@/lib/workspaces"
 
 // TEMPORARY local-only preview of JournalSection with mock data.
 const ROWS: JournalRow[] = [
@@ -13,10 +15,16 @@ const ROWS: JournalRow[] = [
 
 export default function PreviewJournal() {
   return (
-    <div className="flex h-screen flex-col p-6">
-      <div className="min-h-0 flex-1">
-        <JournalSection entries={ROWS} userId="preview" />
+    <WorkspaceProvider
+      userId="preview"
+      initialWorkspaces={DEFAULT_WORKSPACES}
+      initialActiveId="personal"
+    >
+      <div className="flex h-screen flex-col p-6">
+        <div className="min-h-0 flex-1">
+          <JournalSection entries={ROWS} userId="preview" />
+        </div>
       </div>
-    </div>
+    </WorkspaceProvider>
   )
 }

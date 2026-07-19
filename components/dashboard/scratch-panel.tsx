@@ -1,7 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { ListTodo, NotebookPen, PanelRight, Plus, X } from "lucide-react"
+import {
+  ArrowLeftToLine,
+  ArrowRightToLine,
+  ListTodo,
+  NotebookPen,
+  Plus,
+  X,
+} from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -18,7 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { useWorkspace } from "@/components/dashboard/workspace-context"
 import { createClient } from "@/lib/supabase/client"
-import { uuid } from "@/lib/utils"
+import { cn, uuid } from "@/lib/utils"
 
 type Todo = { id: string; text: string; done: boolean }
 
@@ -214,7 +221,9 @@ export function ScratchPanelProvider({
 }
 
 export function ScratchPanelTrigger({ className }: { className?: string }) {
-  const { toggle } = useScratchPanel()
+  const { toggle, open, openMobile } = useScratchPanel()
+  const isDesktop = useIsDesktop()
+  const isOpen = isDesktop ? open : openMobile
 
   return (
     <Button
@@ -223,7 +232,8 @@ export function ScratchPanelTrigger({ className }: { className?: string }) {
       className={className}
       onClick={toggle}
     >
-      <PanelRight />
+      {/* Arrow points the way the panel will move (it lives on the right). */}
+      {isOpen ? <ArrowRightToLine /> : <ArrowLeftToLine />}
       <span className="sr-only">Toggle scratchpad</span>
     </Button>
   )
@@ -234,15 +244,26 @@ export function ScratchPanel() {
 
   return (
     <>
-      {open && (
-        <aside className="sticky top-14 hidden h-[calc(100svh-3.5rem)] w-80 shrink-0 self-start border-l bg-background xl:block">
+      {/* `dark` restyles everything inside (tabs, inputs, checkboxes) for
+          the near-black panel, matching the sidebar. Full viewport height,
+          sliding open/closed by animating width like the left sidebar. */}
+      <aside
+        className={cn(
+          "dark sticky top-0 hidden h-svh min-w-0 shrink-0 self-start overflow-hidden bg-sidebar text-sidebar-foreground transition-[width] duration-200 ease-linear xl:block",
+          open ? "w-80 border-l border-sidebar-border" : "w-0"
+        )}
+      >
+        <div className="h-full w-80">
           <ScratchPanelContent />
-        </aside>
-      )}
+        </div>
+      </aside>
 
       {/* Below xl the panel opens as a sheet from the right instead. */}
       <Sheet open={openMobile} onOpenChange={setOpenMobile}>
-        <SheetContent side="right" className="w-80 gap-0 p-0">
+        <SheetContent
+          side="right"
+          className="dark w-80 gap-0 bg-sidebar p-0 text-sidebar-foreground"
+        >
           <SheetHeader className="sr-only">
             <SheetTitle>Scratchpad</SheetTitle>
             <SheetDescription>Quick to-dos and notes.</SheetDescription>

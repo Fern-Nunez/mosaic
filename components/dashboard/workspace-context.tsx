@@ -1,24 +1,23 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 
-import {
-  setLocalStorageItem,
-  useLocalStorageItem,
-} from "@/hooks/use-local-storage"
+import { createClient } from "@/lib/supabase/client"
 import { uuid } from "@/lib/utils"
+import type { Workspace } from "@/lib/workspaces"
 
-export type Workspace = { id: string; name: string }
+export type { Workspace }
 
-const WORKSPACES_KEY = "mosaic:workspaces"
-const ACTIVE_KEY = "mosaic:active-workspace"
-const DEFAULT_WORKSPACES: Workspace[] = [{ id: "personal", name: "Personal" }]
+// The server reads this cookie to filter every query by dashboard.
+const ACTIVE_COOKIE = "mosaic-workspace"
 
 type WorkspaceContextValue = {
   workspaces: Workspace[]
   active: Workspace
   setActive: (id: string) => void
-  addWorkspace: (name: string) => void
+  /** Resolves to an error message, or null on success. */
+  addWorkspace: (name: string) => Promise<string | null>
 }
 
 const WorkspaceContext = React.createContext<WorkspaceContextValue | null>(
@@ -33,25 +32,27 @@ export function useWorkspace() {
   return context
 }
 
+function setActiveCookie(id: string) {
+  document.cookie = `${ACTIVE_COOKIE}=${encodeURIComponent(id)}; path=/; max-age=31536000; samesite=lax`
+}
+
 export function WorkspaceProvider({
+  userId,
+  initialWorkspaces,
+  initialActiveId,
   children,
 }: {
+  userId: string
+  initialWorkspaces: Workspace[]
+  initialActiveId: string
   children: React.ReactNode
 }) {
-  const workspacesRaw = useLocalStorageItem(WORKSPACES_KEY)
-  const activeId = useLocalStorageItem(ACTIVE_KEY)
+  const router = useRouter()
+  const supabase = React.useMemo(() => createClient(), [])
 
-  const workspaces = React.useMemo<Workspace[]>(() => {
-    if (!workspacesRaw) return DEFAULT_WORKSPACES
-    try {
-      const parsed = JSON.parse(workspacesRaw) as Workspace[]
-      return Array.isArray(parsed) && parsed.length > 0
-        ? parsed
-        : DEFAULT_WORKSPACES
-    } catch {
-      return DEFAULT_WORKSPACES
-    }
-  }, [workspacesRaw])
+  const [workspaces, setWorkspaces] =
+    React.useState<Workspace[]>(initialWorkspaces)
+  const [activeId, setActiveId] = React.useState(initialActiveId)
 
   const value = React.useMemo<WorkspaceContextValue>(() => {
     const active =
@@ -59,17 +60,36 @@ export function WorkspaceProvider({
     return {
       workspaces,
       active,
-      setActive: (id) => setLocalStorageItem(ACTIVE_KEY, id),
-      addWorkspace: (name) => {
+      setActive: (id) => {
+        setActiveId(id)
+        setActiveCookie(id)
+        // Server components refetch with the new cookie, so every tab
+        // shows this dashboard's data.
+        router.refresh()
+      },
+      addWorkspace: async (name) => {
         const id = uuid()
-        setLocalStorageItem(
-          WORKSPACES_KEY,
-          JSON.stringify([...workspaces, { id, name }])
-        )
-        setLocalStorageItem(ACTIVE_KEY, id)
+        const next = [...workspaces, { id, name }]
+        const { error } = await supabase
+          .from("user_settings")
+          .upsert(
+            { user_id: userId, workspaces: next },
+            { onConflict: "user_id" }
+          )
+        if (error) {
+          // Most likely the workspaces migration hasn't been applied.
+          return /column|schema cache/i.test(error.message)
+            ? "Dashboard columns are missing. Run the workspaces migration in Supabase, then try again."
+            : error.message
+        }
+        setWorkspaces(next)
+        setActiveId(id)
+        setActiveCookie(id)
+        router.refresh()
+        return null
       },
     }
-  }, [workspaces, activeId])
+  }, [workspaces, activeId, router, supabase, userId])
 
   return (
     <WorkspaceContext.Provider value={value}>

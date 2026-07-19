@@ -9,6 +9,7 @@ import {
   ScratchPanelTrigger,
 } from "@/components/dashboard/scratch-panel"
 import { WorkspaceProvider } from "@/components/dashboard/workspace-context"
+import { DEFAULT_WORKSPACES, type Workspace } from "@/lib/workspaces"
 import { Separator } from "@/components/ui/separator"
 import {
   SidebarInset,
@@ -36,8 +37,31 @@ export default async function DashboardLayout({
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false"
   const scratchOpen = cookieStore.get("scratch_panel_state")?.value !== "false"
 
+  // The dashboard list lives on user_settings so it syncs across devices.
+  // Read defensively: if the workspaces migration hasn't been applied yet,
+  // fall back to the default so the app still loads.
+  const { data: settingsData } = await supabase
+    .from("user_settings")
+    .select("workspaces")
+    .eq("user_id", user.id)
+    .maybeSingle()
+
+  const workspaces: Workspace[] =
+    Array.isArray(settingsData?.workspaces) && settingsData.workspaces.length > 0
+      ? (settingsData.workspaces as Workspace[])
+      : DEFAULT_WORKSPACES
+
+  const cookieWorkspace = cookieStore.get("mosaic-workspace")?.value
+  const activeId = workspaces.some((ws) => ws.id === cookieWorkspace)
+    ? cookieWorkspace!
+    : workspaces[0].id
+
   return (
-    <WorkspaceProvider>
+    <WorkspaceProvider
+      userId={user.id}
+      initialWorkspaces={workspaces}
+      initialActiveId={activeId}
+    >
       <SidebarProvider defaultOpen={defaultOpen}>
         <ScratchPanelProvider defaultOpen={scratchOpen} userId={user.id}>
           <AppSidebar userEmail={user.email ?? ""} />
@@ -55,9 +79,11 @@ export default async function DashboardLayout({
               <div className="flex min-w-0 flex-1 flex-col self-stretch px-4 py-6">
                 {children}
               </div>
-              <ScratchPanel />
             </div>
           </SidebarInset>
+          {/* Full-height right panel, a sibling of the main area so it
+              spans the whole viewport like the left sidebar. */}
+          <ScratchPanel />
         </ScratchPanelProvider>
       </SidebarProvider>
     </WorkspaceProvider>

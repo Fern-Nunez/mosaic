@@ -11,6 +11,7 @@ import {
 } from "lucide-react"
 
 import { createClient } from "@/lib/supabase/client"
+import { useWorkspace } from "@/components/dashboard/workspace-context"
 import type { JournalRow } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -97,6 +98,7 @@ export function JournalSection({
   userId: string
 }) {
   const supabase = React.useMemo(() => createClient(), [])
+  const { active } = useWorkspace()
 
   const [entries, setEntries] = React.useState<JournalRow[]>(() =>
     sortEntries(initialEntries)
@@ -237,7 +239,7 @@ export function JournalSection({
     } else {
       const { data, error: err } = await supabase
         .from("journal")
-        .insert({ user_id: userId, ...fields })
+        .insert({ user_id: userId, workspace: active.id, ...fields })
         .select()
         .single()
       setSaving(false)
@@ -286,7 +288,7 @@ export function JournalSection({
 
         {/* Black hardcover. Click the left/right edges (the black margins)
             to turn pages. */}
-        <div className="relative flex flex-1 items-stretch overflow-hidden rounded-xl bg-neutral-950 p-2.5 shadow-2xl">
+        <div className="relative flex flex-1 items-stretch overflow-hidden rounded-xl bg-black p-2.5 shadow-2xl">
           <button
             type="button"
             aria-label="Turn to newer page"
@@ -317,15 +319,10 @@ export function JournalSection({
                   "relative flex min-h-[24rem] w-full flex-1 flex-col items-center justify-center rounded-l-sm rounded-r-md p-8 text-center shadow-md",
                   flipClass
                 )}
-                style={{ backgroundColor: "#14110d", color: "#ecdfc4" }}
+                style={{ backgroundColor: "#000000" }}
               >
-                <div className="pointer-events-none absolute inset-4 rounded-md border border-amber-200/25" />
-                <div className="pointer-events-none absolute inset-[1.35rem] rounded-md border border-amber-200/10" />
-                <NotebookPen className="mb-5 size-9 text-amber-200/55" />
-                <p className="flex items-center gap-1 font-serif text-xs text-amber-200/40">
-                  Tap the right edge to open
-                  <ChevronRight className="size-3.5" />
-                </p>
+                <div className="pointer-events-none absolute inset-4 rounded-md border border-white/10" />
+                <div className="pointer-events-none absolute inset-[1.35rem] rounded-md border border-white/5" />
               </div>
             ) : (
               <div
