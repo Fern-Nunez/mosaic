@@ -2,7 +2,8 @@ import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 
 import { AppSidebar } from "@/components/dashboard/app-sidebar"
-import { DashboardTitle } from "@/components/dashboard/dashboard-sections"
+import { HabitDots } from "@/components/dashboard/habit-dots"
+import { HabitsProvider } from "@/components/dashboard/habits-context"
 import {
   ScratchPanel,
   ScratchPanelProvider,
@@ -62,6 +63,7 @@ export default async function DashboardLayout({
       initialWorkspaces={workspaces}
       initialActiveId={activeId}
     >
+      <HabitsProvider userId={user.id}>
       <SidebarProvider defaultOpen={defaultOpen}>
         <ScratchPanelProvider defaultOpen={scratchOpen} userId={user.id}>
           <AppSidebar userEmail={user.email ?? ""} />
@@ -72,7 +74,12 @@ export default async function DashboardLayout({
                 orientation="vertical"
                 className="mr-2 data-[orientation=vertical]:h-4"
               />
-              <DashboardTitle />
+              {/* Daily-habit "dopamine dots", centered across the bar. */}
+              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2">
+                <div className="pointer-events-auto">
+                  <HabitDots />
+                </div>
+              </div>
               <ScratchPanelTrigger className="ml-auto" />
             </header>
             <div className="flex flex-1 items-start">
@@ -86,6 +93,7 @@ export default async function DashboardLayout({
           <ScratchPanel />
         </ScratchPanelProvider>
       </SidebarProvider>
+      </HabitsProvider>
     </WorkspaceProvider>
   )
 }

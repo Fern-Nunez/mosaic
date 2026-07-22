@@ -4,10 +4,7 @@ import * as React from "react"
 import { Check, ChevronLeft, ChevronRight, Flame } from "lucide-react"
 
 import { useWorkspace } from "@/components/dashboard/workspace-context"
-import {
-  setLocalStorageItem,
-  useLocalStorageItem,
-} from "@/hooks/use-local-storage"
+import { useLocalStorageItem } from "@/hooks/use-local-storage"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -61,16 +58,6 @@ export function CheckinCalendar() {
     }
   }, [checkedRaw])
 
-  function toggleDay(key: string) {
-    const next = new Set(checked)
-    if (next.has(key)) {
-      next.delete(key)
-    } else {
-      next.add(key)
-    }
-    setLocalStorageItem(storageKey, JSON.stringify([...next]))
-  }
-
   const today = new Date()
   const todayKey = toKey(today)
   const monthLabel = month.toLocaleDateString("en-US", {
@@ -83,6 +70,7 @@ export function CheckinCalendar() {
     0
   ).getDate()
   const leadingBlanks = month.getDay()
+  const weekRows = Math.ceil((leadingBlanks + daysInMonth) / 7)
   const checkedThisMonth = Array.from(
     { length: daysInMonth },
     (_, i) => new Date(month.getFullYear(), month.getMonth(), i + 1)
@@ -90,13 +78,13 @@ export function CheckinCalendar() {
   const streak = currentStreak(checked)
 
   return (
-    <Card className="w-full max-w-md">
+    <Card className="flex w-full flex-1 flex-col">
       <CardHeader>
         <div className="flex items-start justify-between gap-2">
           <div>
             <CardTitle>Daily check-ins</CardTitle>
             <CardDescription>
-              Check off each day you show up.
+              Finish every habit in the top bar and the day lights up green.
             </CardDescription>
           </div>
           <div className="flex items-center gap-1">
@@ -132,7 +120,7 @@ export function CheckinCalendar() {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="flex flex-1 flex-col gap-2">
         <div className="grid grid-cols-7 gap-1 text-center">
           {WEEKDAYS.map((day) => (
             <span
@@ -142,6 +130,11 @@ export function CheckinCalendar() {
               {day}
             </span>
           ))}
+        </div>
+        <div
+          className="grid flex-1 grid-cols-7 gap-1 text-center"
+          style={{ gridTemplateRows: `repeat(${weekRows}, minmax(0, 1fr))` }}
+        >
           {Array.from({ length: leadingBlanks }).map((_, i) => (
             <span key={`blank-${i}`} />
           ))}
@@ -152,25 +145,33 @@ export function CheckinCalendar() {
             const isToday = key === todayKey
             const isFuture = key > todayKey
             return (
-              <button
+              <div
                 key={key}
-                type="button"
-                disabled={isFuture}
-                onClick={() => toggleDay(key)}
-                aria-pressed={isChecked}
-                aria-label={`${isChecked ? "Uncheck" : "Check off"} ${date.toLocaleDateString("en-US", { month: "long", day: "numeric" })}`}
+                aria-label={`${date.toLocaleDateString("en-US", { month: "long", day: "numeric" })}${isChecked ? " — done" : ""}`}
                 className={cn(
-                  "relative flex aspect-square cursor-pointer items-center justify-center rounded-md border text-xs tabular-nums transition-colors",
+                  "relative flex min-h-9 flex-col rounded-lg border p-2 text-sm tabular-nums transition-colors",
                   isChecked
-                    ? "border-primary bg-primary font-medium text-primary-foreground"
-                    : "border-input bg-background hover:bg-muted",
-                  isToday && "ring-2 ring-ring/50",
-                  isFuture &&
-                    "cursor-not-allowed border-transparent text-muted-foreground/50"
+                    ? "border-emerald-500 bg-emerald-500/10 ring-2 ring-emerald-500/60 ring-inset"
+                    : "border-input bg-background",
+                  isToday && !isChecked && "border-emerald-500/60 ring-1 ring-emerald-500/40",
+                  isFuture && "border-dashed text-muted-foreground/40"
                 )}
               >
-                {isChecked ? <Check className="size-3.5" /> : i + 1}
-              </button>
+                <span
+                  className={cn(
+                    "leading-none",
+                    isChecked && "font-semibold text-emerald-700 dark:text-emerald-400",
+                    isToday && !isChecked && "font-semibold text-foreground"
+                  )}
+                >
+                  {i + 1}
+                </span>
+                {isChecked && (
+                  <span className="mt-auto flex size-6 items-center justify-center self-end rounded-full bg-emerald-500 text-white shadow-[0_0_8px_1px] shadow-emerald-500/50">
+                    <Check className="size-3.5" />
+                  </span>
+                )}
+              </div>
             )
           })}
         </div>

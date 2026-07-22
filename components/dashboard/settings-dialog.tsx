@@ -3,18 +3,19 @@
 import * as React from "react"
 import { KeyRound, Settings } from "lucide-react"
 
+import { CalendarManager } from "@/components/dashboard/calendar-manager"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Separator } from "@/components/ui/separator"
 import { SidebarMenuButton } from "@/components/ui/sidebar"
 
 export function SettingsDialog() {
@@ -97,7 +98,7 @@ export function SettingsDialog() {
           </SidebarMenuButton>
         }
       />
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
@@ -153,20 +154,17 @@ export function SettingsDialog() {
               </p>
             )}
 
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-              >
-                Close
-              </Button>
+            <div className="flex justify-end">
               <Button type="submit" disabled={busy || !draft.trim()}>
                 {busy ? "Saving…" : "Save key"}
               </Button>
-            </DialogFooter>
+            </div>
           </form>
         )}
+
+        <Separator />
+
+        <CalendarManager />
       </DialogContent>
     </Dialog>
   )

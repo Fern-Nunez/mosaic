@@ -2,12 +2,14 @@ import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { BookOpen, Dumbbell, Scale, Utensils, Wallet } from "lucide-react"
 
-import { CheckinCalendar } from "@/components/dashboard/checkin-calendar"
 import { DashboardSections } from "@/components/dashboard/dashboard-sections"
 import { GymSection } from "@/components/dashboard/gym-section"
+import { HabitStrip } from "@/components/dashboard/habit-strip"
+import { HabitsSection } from "@/components/dashboard/habits-section"
 import { JournalSection } from "@/components/dashboard/journal-section"
 import { MoneySection } from "@/components/dashboard/money-section"
 import { NutritionSection } from "@/components/dashboard/nutrition-section"
+import { ScheduleSection } from "@/components/dashboard/schedule-section"
 import { WeightSection } from "@/components/dashboard/weight-section"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
@@ -15,7 +17,6 @@ import {
   accountActivity,
   activeSubscriptionsMonthly,
   categorySpend,
-  dailyGymVolume,
   dailyNutrition,
   DEFAULT_NUTRITION_GOALS,
   lastNDayKeys,
@@ -24,7 +25,6 @@ import {
   moneyTotalsThisMonth,
   paymentMethodTotals,
   nutritionToday,
-  recentPRs,
   weightChange,
   weightSeries,
   workoutsThisWeek,
@@ -205,7 +205,7 @@ export default async function DashboardPage() {
     <DashboardSections
       views={{
         overview: (
-          <div className="space-y-6">
+          <div className="flex h-full flex-col gap-6">
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
               <StatCard
                 icon={Wallet}
@@ -247,7 +247,11 @@ export default async function DashboardPage() {
                 hint={`${journalRows.length} total entries`}
               />
             </div>
-            <CheckinCalendar />
+            <HabitStrip />
+            {/* Calendar embed is desktop-only — hidden on phones. */}
+            <div className="hidden min-h-0 flex-1 sm:block">
+              <ScheduleSection />
+            </div>
           </div>
         ),
         // Keyed by workspace so sections holding client state (journal
@@ -279,14 +283,7 @@ export default async function DashboardPage() {
             userId={user.id}
           />
         ),
-        gym: (
-          <GymSection
-            key={workspace}
-            volume={dailyGymVolume(gymRows)}
-            prs={recentPRs(gymRows)}
-            recent={gymRows.slice(0, 10)}
-          />
-        ),
+        gym: <GymSection key={workspace} rows={gymRows} userId={user.id} />,
         weight: (
           <WeightSection key={workspace} rows={weightRows} userId={user.id} />
         ),
@@ -297,6 +294,7 @@ export default async function DashboardPage() {
             userId={user.id}
           />
         ),
+        habits: <HabitsSection key={workspace} />,
       }}
     />
   )

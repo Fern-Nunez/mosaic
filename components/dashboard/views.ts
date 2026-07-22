@@ -1,6 +1,7 @@
 import type * as React from "react"
 import {
   BookOpen,
+  CircleDot,
   Dumbbell,
   LayoutDashboard,
   Scale,
@@ -10,7 +11,14 @@ import {
 } from "lucide-react"
 
 export type DashboardView = {
-  id: "overview" | "money" | "nutrition" | "gym" | "weight" | "journal"
+  id:
+    | "overview"
+    | "money"
+    | "nutrition"
+    | "gym"
+    | "weight"
+    | "journal"
+    | "habits"
   label: string
   heading: string
   description: string
@@ -59,6 +67,13 @@ export const DASHBOARD_VIEWS: DashboardView[] = [
     heading: "Journal",
     description: "Entries, moods, and reflections.",
     icon: BookOpen,
+  },
+  {
+    id: "habits",
+    label: "Habits",
+    heading: "Habits",
+    description: "Your daily habits and the dots in the top bar.",
+    icon: CircleDot,
   },
 ]
 
