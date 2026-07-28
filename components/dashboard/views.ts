@@ -1,6 +1,7 @@
 import type * as React from "react"
 import {
   BookOpen,
+  Briefcase,
   CircleDot,
   Dumbbell,
   LayoutDashboard,
@@ -19,6 +20,7 @@ export type DashboardView = {
     | "weight"
     | "journal"
     | "habits"
+    | "jobs"
   label: string
   heading: string
   description: string
@@ -74,6 +76,13 @@ export const DASHBOARD_VIEWS: DashboardView[] = [
     heading: "Habits",
     description: "Your daily habits and the dots in the top bar.",
     icon: CircleDot,
+  },
+  {
+    id: "jobs",
+    label: "Jobs",
+    heading: "Job applications",
+    description: "Roles you've applied to and where each one stands.",
+    icon: Briefcase,
   },
 ]
 

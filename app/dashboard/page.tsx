@@ -6,6 +6,7 @@ import { DashboardSections } from "@/components/dashboard/dashboard-sections"
 import { GymSection } from "@/components/dashboard/gym-section"
 import { HabitStrip } from "@/components/dashboard/habit-strip"
 import { HabitsSection } from "@/components/dashboard/habits-section"
+import { JobsSection } from "@/components/dashboard/jobs-section"
 import { JournalSection } from "@/components/dashboard/journal-section"
 import { MoneySection } from "@/components/dashboard/money-section"
 import { NutritionSection } from "@/components/dashboard/nutrition-section"
@@ -33,6 +34,7 @@ import { createClient } from "@/lib/supabase/server"
 import type {
   AccountRow,
   GymRow,
+  JobApplicationRow,
   JournalRow,
   NutritionRow,
   SubscriptionRow,
@@ -113,8 +115,16 @@ export default async function DashboardPage() {
   // nothing's due, it's a no-op.
   await supabase.rpc("advance_due_subscriptions")
 
-  const [transactions, accounts, subscriptions, nutrition, gym, journal, weight] =
-    await Promise.all([
+  const [
+    transactions,
+    accounts,
+    subscriptions,
+    nutrition,
+    gym,
+    journal,
+    weight,
+    jobs,
+  ] = await Promise.all([
     supabase
       .from("transactions")
       .select(
@@ -167,6 +177,14 @@ export default async function DashboardPage() {
       .eq("user_id", user.id)
       .eq("workspace", workspace)
       .order("date", { ascending: true }),
+    supabase
+      .from("job_applications")
+      .select(
+        "id, position_title, company, pay, description, url, status, applied_date, notes"
+      )
+      .eq("user_id", user.id)
+      .eq("workspace", workspace)
+      .order("applied_date", { ascending: false }),
   ])
 
   // Daily nutrition goals live on user_settings so they sync across
@@ -192,6 +210,7 @@ export default async function DashboardPage() {
   const gymRows = (gym.data ?? []) as GymRow[]
   const journalRows = (journal.data ?? []) as JournalRow[]
   const weightRows = (weight.data ?? []) as WeightRow[]
+  const jobRows = (jobs.data ?? []) as JobApplicationRow[]
 
   const totals = moneyTotalsThisMonth(transactionRows)
   const subsMonthly = activeSubscriptionsMonthly(subscriptionRows)
@@ -295,6 +314,7 @@ export default async function DashboardPage() {
           />
         ),
         habits: <HabitsSection key={workspace} />,
+        jobs: <JobsSection key={workspace} jobs={jobRows} userId={user.id} />,
       }}
     />
   )

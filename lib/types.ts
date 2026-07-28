@@ -96,6 +96,28 @@ export type JournalRow = {
   tags: string[] | null
 }
 
+export type JobStatus =
+  | "wishlist"
+  | "applied"
+  | "interviewing"
+  | "offer"
+  | "accepted"
+  | "rejected"
+  | "withdrawn"
+  | "ghosted"
+
+export type JobApplicationRow = {
+  id: string
+  position_title: string
+  company: string | null
+  pay: string | null
+  description: string | null
+  url: string | null
+  status: JobStatus
+  applied_date: string
+  notes: string | null
+}
+
 export type WeightRow = {
   id: string
   date: string
