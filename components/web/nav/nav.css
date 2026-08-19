@@ -1,0 +1,47 @@
+.navbarContainer {
+    padding: 0rem clamp(1.5rem, 0.78rem + 2.68vw, 4rem);
+    position: fixed;
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.navLogoImage {
+    width: 35px;
+    height: 35px;
+}
+
+.navLogoAndText {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+    align-items: center;
+    padding: 1rem 0rem;
+}
+
+.navBrandName{
+    font-family: var(--font-display);
+    font-size: 1.3rem;
+    color: #FFFFFF;
+}
+
+.navHamburgerMenuContainer {
+    width: 30px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;    /* stack centered vertically */
+    align-items: flex-end;      /* right-align → staggered from the right */
+    gap: 6px;                   /* space between the lines */
+    cursor: pointer;
+}
+
+/* shared look for all three lines */
+.navHamburgerMenuContainer span {
+    height: 2px;
+    background: #FFFFFF;
+}
+
+/* the staggered widths — top longest, decreasing down */
+.topLine    { width: 100%; }
+.midLine    { width: 65%; }
+.bottomLine { width: 40%; }

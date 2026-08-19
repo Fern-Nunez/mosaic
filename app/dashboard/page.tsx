@@ -4,13 +4,11 @@ import { BookOpen, Dumbbell, Scale, Utensils, Wallet } from "lucide-react"
 
 import { DashboardSections } from "@/components/dashboard/dashboard-sections"
 import { GymSection } from "@/components/dashboard/gym-section"
-import { HabitStrip } from "@/components/dashboard/habit-strip"
 import { HabitsSection } from "@/components/dashboard/habits-section"
 import { JobsSection } from "@/components/dashboard/jobs-section"
 import { JournalSection } from "@/components/dashboard/journal-section"
 import { MoneySection } from "@/components/dashboard/money-section"
 import { NutritionSection } from "@/components/dashboard/nutrition-section"
-import { ScheduleSection } from "@/components/dashboard/schedule-section"
 import { WeightSection } from "@/components/dashboard/weight-section"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
@@ -24,7 +22,6 @@ import {
   latestMood,
   monthlyMoney,
   moneyTotalsThisMonth,
-  paymentMethodTotals,
   nutritionToday,
   weightChange,
   weightSeries,
@@ -266,11 +263,6 @@ export default async function DashboardPage() {
                 hint={`${journalRows.length} total entries`}
               />
             </div>
-            <HabitStrip />
-            {/* Calendar embed is desktop-only — hidden on phones. */}
-            <div className="hidden min-h-0 flex-1 sm:block">
-              <ScheduleSection />
-            </div>
           </div>
         ),
         // Keyed by workspace so sections holding client state (journal
@@ -281,8 +273,6 @@ export default async function DashboardPage() {
             monthly={monthlyMoney(transactionRows)}
             categoriesThisMonth={categorySpend(transactionRows, 0)}
             categoriesLastMonth={categorySpend(transactionRows, 1)}
-            methodsThisMonth={paymentMethodTotals(transactionRows, 0)}
-            methodsLastMonth={paymentMethodTotals(transactionRows, 1)}
             accounts={accountRows}
             accountsThisMonth={accountActivity(transactionRows, accountRows, 0)}
             accountsLastMonth={accountActivity(transactionRows, accountRows, 1)}

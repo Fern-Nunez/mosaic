@@ -1,0 +1,62 @@
+.explainContainer {
+    background-color: #171717;
+    padding: clamp(1.5rem, 0.78rem + 2.68vw, 4rem);
+}
+.explainSectionContainer{
+    display: flex;
+    flex-direction: column;
+    gap: clamp(6rem, 4.28rem + 6.43vw, 12rem);
+}
+
+.finalExplain {
+    max-width: 95ch;      /* caps line length; ch = width of a "0" character */
+    margin: 0 auto;       /* centers it */
+    text-align: center;
+    color: white;
+    padding: clamp(10rem, 8.28rem + 6.43vw, 16rem) 1rem;
+}
+.finalExplain p {
+    color: #FFFFFF;
+    font-size: clamp(1.3rem, 5vw, 2.5rem);
+}
+
+.explainSection, .explainSectionMid {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+.explainTextContainer{
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+.explainImage {
+    border-radius: 15px;
+    width: 100%;
+    height: auto;
+}
+
+@media (min-width: 1260px) {
+    .explainSection, .explainSectionMid {
+        display: grid;
+        grid-template-rows: 1fr;
+        grid-template-columns: 1fr 2fr;
+        column-gap: clamp(3rem, -6.54rem + 12.12vw, 8rem);
+    }
+
+    .explainSectionMid {
+        grid-template-columns: 2fr 1fr;   /* image gets the wide column */
+    }
+    .explainSectionMid .explainTextContainer {
+        grid-column: 2;                   /* text → right */
+        grid-row: 1;
+    }
+    .explainSectionMid .explainSectionImage {
+        grid-column: 1;                   /* image → left */
+        grid-row: 1;
+    }
+
+    .finalExplain {
+        width: 50%;
+    }
+}

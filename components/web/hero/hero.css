@@ -1,0 +1,21 @@
+.heroContainer{
+    background-color: #171717;
+    height: 100svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: clamp(1.5rem, 0.78rem + 2.68vw, 4rem);
+}
+
+.heroTextContainer{
+    display: flex;
+    flex-direction: column;
+    row-gap: 1.5rem;
+    align-items: flex-start;
+}
+.heroDescriptionText{
+    max-width: 89ch;
+}
+.buttonContainer {
+    padding-top: 0.5rem;
+}

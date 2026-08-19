@@ -1,8 +1,6 @@
-// Daily habits ("dopamine dots") live in localStorage, per dashboard,
-// alongside the check-in calendar. When every habit is completed on a
-// given day we mark that day in the shared check-in set so the overview
-// calendar shows a green check — the two features stay in sync in-tab
-// through the mosaic:local-storage event (see use-local-storage).
+// Daily habits ("dopamine dots") — the tappable icons in the top bar.
+// Each tap records a habit_completions row in Supabase, scoped per
+// dashboard (workspace).
 
 import {
   Activity,
@@ -159,30 +157,6 @@ export function habitIcon(key: string): LucideIcon {
 /** One habit completed on one day (mirrors the habit_completions row). */
 export type Completion = { habitId: string; date: string }
 
-/** A saved Google Calendar embed, with a friendly name to identify it. */
-export type Calendar = { name: string; url: string }
-
-export function normalizeCalendars(value: unknown): Calendar[] {
-  if (!Array.isArray(value)) return []
-  const out: Calendar[] = []
-  for (const item of value) {
-    if (typeof item === "string") {
-      out.push({ name: "Calendar", url: item })
-    } else if (
-      item &&
-      typeof item === "object" &&
-      typeof (item as { url?: unknown }).url === "string"
-    ) {
-      const obj = item as { name?: unknown; url: string }
-      out.push({
-        name: typeof obj.name === "string" ? obj.name : "Calendar",
-        url: obj.url,
-      })
-    }
-  }
-  return out
-}
-
 export function dateKey(date: Date): string {
   const y = date.getFullYear()
   const m = String(date.getMonth() + 1).padStart(2, "0")
@@ -200,39 +174,3 @@ export function completedOn(
   )
 }
 
-/** Days on which every current habit was completed. */
-export function fullyCompletedDays(
-  habits: Habit[],
-  completions: Completion[]
-): Set<string> {
-  if (habits.length === 0) return new Set()
-  const byDate = new Map<string, Set<string>>()
-  for (const c of completions) {
-    let set = byDate.get(c.date)
-    if (!set) {
-      set = new Set()
-      byDate.set(c.date, set)
-    }
-    set.add(c.habitId)
-  }
-  const done = new Set<string>()
-  byDate.forEach((ids, date) => {
-    if (habits.every((habit) => ids.has(habit.id))) done.add(date)
-  })
-  return done
-}
-
-/** Consecutive fully-completed days ending today (or yesterday if today
- * isn't done yet — so an unfinished today doesn't zero out the streak). */
-export function currentStreak(checked: Set<string>): number {
-  const cursor = new Date()
-  if (!checked.has(dateKey(cursor))) {
-    cursor.setDate(cursor.getDate() - 1)
-  }
-  let streak = 0
-  while (checked.has(dateKey(cursor))) {
-    streak++
-    cursor.setDate(cursor.getDate() - 1)
-  }
-  return streak
-}

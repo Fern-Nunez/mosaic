@@ -5,26 +5,16 @@ import * as React from "react"
 import { useWorkspace } from "@/components/dashboard/workspace-context"
 import { createClient } from "@/lib/supabase/client"
 import { uuid } from "@/lib/utils"
-import {
-  dateKey,
-  normalizeCalendars,
-  type Calendar,
-  type Completion,
-  type Habit,
-} from "@/lib/habits"
+import { dateKey, type Completion, type Habit } from "@/lib/habits"
 
 type HabitsContextValue = {
   habits: Habit[]
   completions: Completion[]
-  calendars: Calendar[]
   /** True when the Supabase tables can't be read (migration not applied). */
   loadError: boolean
   addHabit: (name: string, icon: string) => void
   removeHabit: (id: string) => void
   toggleToday: (habitId: string) => void
-  /** Returns an error message, or null on success. */
-  addCalendar: (name: string, input: string) => string | null
-  removeCalendar: (index: number) => void
 }
 
 const HabitsContext = React.createContext<HabitsContextValue | null>(null)
@@ -35,22 +25,6 @@ export function useHabits() {
     throw new Error("useHabits must be used within a HabitsProvider.")
   }
   return context
-}
-
-// Accepts either a raw embed URL or the full <iframe …> snippet Google
-// gives you, and only trusts calendar.google.com.
-export function extractCalendarUrl(input: string): string | null {
-  const trimmed = input.trim()
-  if (!trimmed) return null
-  const srcMatch = trimmed.match(/src="([^"]+)"/)
-  const candidate = srcMatch ? srcMatch[1] : trimmed
-  try {
-    const url = new URL(candidate)
-    if (url.hostname === "calendar.google.com") return url.toString()
-  } catch {
-    // not a URL
-  }
-  return null
 }
 
 export function HabitsProvider({
@@ -66,7 +40,6 @@ export function HabitsProvider({
 
   const [habits, setHabits] = React.useState<Habit[]>([])
   const [completions, setCompletions] = React.useState<Completion[]>([])
-  const [calendars, setCalendars] = React.useState<Calendar[]>([])
   const [loadError, setLoadError] = React.useState(false)
 
   // Reload from Supabase whenever the active workspace changes.
@@ -82,8 +55,7 @@ export function HabitsProvider({
         .from("habit_completions")
         .select("habit_id, date")
         .eq("workspace", workspace),
-      supabase.from("user_settings").select("calendars").maybeSingle(),
-    ]).then(([habitsRes, compRes, settingsRes]) => {
+    ]).then(([habitsRes, compRes]) => {
       if (cancelled) return
       if (habitsRes.error || compRes.error) {
         setLoadError(true)
@@ -105,40 +77,16 @@ export function HabitsProvider({
           }))
         )
       }
-      const map = (settingsRes.data?.calendars ?? {}) as Record<
-        string,
-        unknown
-      >
-      setCalendars(normalizeCalendars(map[workspace]))
     })
     return () => {
       cancelled = true
     }
   }, [supabase, workspace])
 
-  // Read-modify-write so saving one dashboard's calendars can't clobber
-  // another's (they share one JSON column on the settings row).
-  const persistCalendars = React.useCallback(
-    async (next: Calendar[]) => {
-      const { data } = await supabase
-        .from("user_settings")
-        .select("calendars")
-        .maybeSingle()
-      const map = (data?.calendars ?? {}) as Record<string, unknown>
-      map[workspace] = next
-      const { error } = await supabase
-        .from("user_settings")
-        .upsert({ user_id: userId, calendars: map }, { onConflict: "user_id" })
-      if (error) setLoadError(true)
-    },
-    [supabase, userId, workspace]
-  )
-
   const value = React.useMemo<HabitsContextValue>(() => {
     return {
       habits,
       completions,
-      calendars,
       loadError,
       addHabit: (name, icon) => {
         const habit: Habit = { id: uuid(), name, icon }
@@ -203,30 +151,8 @@ export function HabitsProvider({
             })
         }
       },
-      addCalendar: (name, input) => {
-        const url = extractCalendarUrl(input)
-        if (!url) return "That doesn't look like a Google Calendar embed link."
-        const next = [...calendars, { name: name.trim() || "Calendar", url }]
-        setCalendars(next)
-        persistCalendars(next)
-        return null
-      },
-      removeCalendar: (index) => {
-        const next = calendars.filter((_, i) => i !== index)
-        setCalendars(next)
-        persistCalendars(next)
-      },
     }
-  }, [
-    habits,
-    completions,
-    calendars,
-    loadError,
-    supabase,
-    userId,
-    workspace,
-    persistCalendars,
-  ])
+  }, [habits, completions, loadError, supabase, userId, workspace])
 
   return (
     <HabitsContext.Provider value={value}>{children}</HabitsContext.Provider>

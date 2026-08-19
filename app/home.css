@@ -1,0 +1,95 @@
+/* Website-only design tokens.
+ *
+ * globals.css defines the shared defaults on :root (used by the whole app).
+ * Anything set here on [data-surface="web"] cascades to the marketing site
+ * subtree only, overriding the app defaults for that surface. Because
+ * Tailwind v4 resolves the color tokens via var() at use time, so overriding
+ * a base token here also changes every color utility used inside the site.
+ *
+ * To make a value differ on the website, uncomment it and set your value.
+ * Leave a line commented to inherit the app default from :root.
+ */
+[data-surface="web"] {
+  /* Paint the surface so a changed --background actually shows behind the
+     page (body itself keeps the app background). */
+  background: var(--background);
+  color: var(--foreground);
+  min-height: 100%;
+
+  /* --- Colors --- */
+  /* --background: oklch(1 0 0); */
+  /* --foreground: oklch(0.145 0 0); */
+  /* --card: oklch(1 0 0); */
+  /* --card-foreground: oklch(0.145 0 0); */
+  /* --popover: oklch(1 0 0); */
+  /* --popover-foreground: oklch(0.145 0 0); */
+  /* --primary: oklch(0.596 0.145 163); */
+  /* --primary-foreground: oklch(0.985 0 0); */
+  /* --secondary: oklch(0.97 0 0); */
+  /* --secondary-foreground: oklch(0.205 0 0); */
+  /* --muted: oklch(0.97 0 0); */
+  /* --muted-foreground: oklch(0.556 0 0); */
+  /* --accent: oklch(0.965 0.012 165); */
+  /* --accent-foreground: oklch(0.37 0.08 163); */
+  /* --destructive: oklch(0.577 0.245 27.325); */
+  /* --border: oklch(0.922 0 0); */
+  /* --input: oklch(0.922 0 0); */
+  /* --ring: oklch(0.696 0.17 162); */
+
+  /* --- Charts --- */
+  /* --chart-1: oklch(0.723 0.192 149.579); */
+  /* --chart-2: oklch(0.596 0.145 163); */
+  /* --chart-3: oklch(0.511 0.096 186.391); */
+  /* --chart-4: oklch(0.768 0.233 130.85); */
+  /* --chart-5: oklch(0.432 0.095 166.913); */
+
+  /* --- Shape --- */
+  /* --radius: 0.625rem; */
+
+  /* --- Fonts (map to the next/font variables set in layout.tsx) --- */
+  /* The app default is Inter; the website uses Bricolage for body text.
+     nav/footer reach for --font-display (Cal Sans) directly. */
+  --font-sans: var(--font-bricolage);
+  /* --font-heading: var(--font-display); */
+
+  /* The sidebar tokens are app-chrome only; usually no reason to set them
+     here, but they're available if a web component reuses those classes. */
+}
+
+/* Marketing-site element styling. These were global (and were leaking into
+   the app's headings and paragraphs); scoped here they only touch the site. */
+[data-surface="web"] h1 {
+  color: #ffffff;
+  font-weight: 500;
+  font-size: clamp(2.4rem, 1.67rem + 2.72vw, 4.94rem);
+  line-height: 85%;
+}
+
+[data-surface="web"] h2 {
+  color: #ffffff;
+  font-weight: 500;
+  font-size: clamp(1.5rem, 1.21rem + 1.07vw, 2.5rem);
+  line-height: 85%;
+}
+
+[data-surface="web"] h3 {
+  color: #000000;
+  font-size: 1.2rem;
+}
+
+[data-surface="web"] p {
+  color: #9a9a9a;
+  font-size: clamp(1.3rem, 0.97rem + 0.86vw, 2rem);
+  line-height: 100%;
+  font-weight: 300;
+  font-family: --font-caladea;
+}
+
+/* Optional: separate website values in dark mode. Uncomment and fill in if
+   the site respects the .dark class. */
+/*
+.dark [data-surface="web"] {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+}
+*/

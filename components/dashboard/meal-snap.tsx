@@ -41,6 +41,15 @@ const MEAL_TYPES = [
   { value: "drink", label: "Drink" },
 ] as const
 
+// How aggressively the AI resolves an ambiguous portion into macros.
+const ESTIMATE_LEVELS = [
+  { value: "low", label: "Low" },
+  { value: "middle", label: "Middle" },
+  { value: "high", label: "High" },
+] as const
+
+type EstimateLevel = (typeof ESTIMATE_LEVELS)[number]["value"]
+
 type Estimate = {
   food_name: string
   calories: number
@@ -100,6 +109,7 @@ export function MealSnap({ userId }: { userId: string }) {
   const [preview, setPreview] = React.useState<string | null>(null)
   const [name, setName] = React.useState("")
   const [details, setDetails] = React.useState("")
+  const [estimateLevel, setEstimateLevel] = React.useState<EstimateLevel>("low")
   const [analyzing, setAnalyzing] = React.useState(false)
   const [saving, setSaving] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -129,6 +139,7 @@ export function MealSnap({ userId }: { userId: string }) {
     })
     setName("")
     setDetails("")
+    setEstimateLevel("low")
     setError(null)
     setAnalyzing(false)
     setSaving(false)
@@ -164,6 +175,7 @@ export function MealSnap({ userId }: { userId: string }) {
     body.append("image", await downscale(file), "meal.jpg")
     body.append("name", name)
     body.append("details", details)
+    body.append("estimate", estimateLevel)
 
     let estimate: Estimate
     try {
@@ -268,6 +280,31 @@ export function MealSnap({ userId }: { userId: string }) {
         />
         <p className="text-xs text-muted-foreground">
           The more you tell it, the better the estimate.
+        </p>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Estimate macros on the…</Label>
+        <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
+          {ESTIMATE_LEVELS.map((level) => (
+            <Button
+              key={level.value}
+              type="button"
+              size="sm"
+              variant={estimateLevel === level.value ? "secondary" : "ghost"}
+              className={
+                estimateLevel === level.value ? "shadow-sm" : "text-muted-foreground"
+              }
+              onClick={() => setEstimateLevel(level.value)}
+              disabled={analyzing}
+              aria-pressed={estimateLevel === level.value}
+            >
+              {level.label}
+            </Button>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Low is conservative; high assumes larger portions.
         </p>
       </div>
 
@@ -447,7 +484,7 @@ export function MealSnap({ userId }: { userId: string }) {
     step === "photo"
       ? {
           title: "Snap a meal",
-          description: "AI reads the photo and estimates macros on the low end.",
+          description: "AI reads the photo and estimates the macros.",
         }
       : {
           title: "Check the estimate",

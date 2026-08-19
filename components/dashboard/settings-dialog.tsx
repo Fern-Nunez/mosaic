@@ -3,7 +3,6 @@
 import * as React from "react"
 import { KeyRound, Settings } from "lucide-react"
 
-import { CalendarManager } from "@/components/dashboard/calendar-manager"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -15,7 +14,6 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
 import { SidebarMenuButton } from "@/components/ui/sidebar"
 
 export function SettingsDialog() {
@@ -161,10 +159,6 @@ export function SettingsDialog() {
             </div>
           </form>
         )}
-
-        <Separator />
-
-        <CalendarManager />
       </DialogContent>
     </Dialog>
   )

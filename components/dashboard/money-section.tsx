@@ -2,24 +2,39 @@
 
 import { useState } from "react"
 import {
+  Bar,
+  BarChart,
   CartesianGrid,
   Cell,
-  Line,
-  LineChart,
   Pie,
   PieChart,
   XAxis,
-  YAxis,
 } from "recharts"
-import { AlertTriangle, CalendarClock } from "lucide-react"
+import {
+  Briefcase,
+  CalendarClock,
+  Car,
+  CircleDollarSign,
+  Gift,
+  House,
+  Plane,
+  Receipt,
+  ShoppingBag,
+  ShoppingCart,
+  Stethoscope,
+  Tv,
+  User,
+  Utensils,
+  Wallet,
+  Zap,
+  type LucideIcon,
+} from "lucide-react"
 
 import type {
   AccountActivity,
   CategorySpend,
   MonthlyMoney,
-  PaymentMethodTotals,
 } from "@/lib/stats"
-import { subscriptionMonthlyCost } from "@/lib/stats"
 import {
   AddAccountDialog,
   AddSubscriptionDialog,
@@ -32,6 +47,7 @@ import type {
   SubscriptionRow,
   TransactionRow,
 } from "@/lib/types"
+import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -50,14 +66,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 const monthlyConfig = {
   // Pastels to match the badges: soft green in, soft rose out.
@@ -95,42 +104,33 @@ function categoryColor(name: string): string {
   return CATEGORY_COLORS[name] ?? CATEGORY_COLORS.Other
 }
 
+// An icon per category, for the little tile at the start of each
+// transaction row (the shadcn "Recent transactions" look).
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  Food: Utensils,
+  Groceries: ShoppingCart,
+  Transportation: Car,
+  Bills: Receipt,
+  Utilities: Zap,
+  Housing: House,
+  Streaming: Tv,
+  Entertainment: Tv,
+  Shopping: ShoppingBag,
+  Medical: Stethoscope,
+  Personal: User,
+  Business: Briefcase,
+  Gifts: Gift,
+  Travel: Plane,
+  Income: Wallet,
+  Other: CircleDollarSign,
+}
+
+function categoryIcon(name: string | null): LucideIcon {
+  return CATEGORY_ICONS[name ?? "Other"] ?? CircleDollarSign
+}
+
 // Tinted background + text colors keyed to categories, so each shows
 // the same accent everywhere it appears (badges, filters, etc.).
-// Soft pastel chips: pale 100-level fills with muted 700 text in light
-// mode, translucent tints in dark mode.
-const CATEGORY_STYLES: Record<string, string> = {
-  Food: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/20",
-  Groceries: "bg-lime-100 text-lime-700 border-lime-200 dark:bg-lime-500/15 dark:text-lime-300 dark:border-lime-500/20",
-  Transportation: "bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-500/15 dark:text-teal-300 dark:border-teal-500/20",
-  Bills: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-500/15 dark:text-slate-300 dark:border-slate-500/20",
-  Utilities: "bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-500/15 dark:text-cyan-300 dark:border-cyan-500/20",
-  Housing: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-500/15 dark:text-orange-300 dark:border-orange-500/20",
-  Streaming: "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:border-violet-500/20",
-  Entertainment: "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200 dark:bg-fuchsia-500/15 dark:text-fuchsia-300 dark:border-fuchsia-500/20",
-  Shopping: "bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-500/15 dark:text-pink-300 dark:border-pink-500/20",
-  Medical: "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/20",
-  Personal: "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-500/15 dark:text-sky-300 dark:border-sky-500/20",
-  Business: "bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-500/15 dark:text-indigo-300 dark:border-indigo-500/20",
-  Gifts: "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-500/20",
-  Travel: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/20",
-  Income: "bg-green-100 text-green-700 border-green-200 dark:bg-green-500/15 dark:text-green-300 dark:border-green-500/20",
-  Other: "bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-500/15 dark:text-zinc-300 dark:border-zinc-500/20",
-}
-
-const PAYMENT_METHOD_STYLES: Record<string, string> = {
-  credit_card: "bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-500/15 dark:text-indigo-300 dark:border-indigo-500/20",
-  debit_card: "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-500/15 dark:text-sky-300 dark:border-sky-500/20",
-  cash: "bg-green-100 text-green-700 border-green-200 dark:bg-green-500/15 dark:text-green-300 dark:border-green-500/20",
-  zelle: "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:border-violet-500/20",
-  venmo: "bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-500/15 dark:text-cyan-300 dark:border-cyan-500/20",
-  cash_app: "bg-lime-100 text-lime-700 border-lime-200 dark:bg-lime-500/15 dark:text-lime-300 dark:border-lime-500/20",
-  apple_pay: "bg-zinc-100 text-zinc-700 border-zinc-200 dark:bg-zinc-500/15 dark:text-zinc-300 dark:border-zinc-500/20",
-  google_pay: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/20",
-  ach: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-500/15 dark:text-slate-300 dark:border-slate-500/20",
-  check: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/20",
-}
-
 const ACCOUNT_TYPE_STYLES: Record<string, string> = {
   credit_card: "bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-500/15 dark:text-indigo-300 dark:border-indigo-500/20",
   checking: "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-500/15 dark:text-sky-300 dark:border-sky-500/20",
@@ -141,14 +141,6 @@ const ACCOUNT_TYPE_STYLES: Record<string, string> = {
 }
 
 const DEFAULT_STYLE = "bg-muted text-muted-foreground border-transparent"
-
-function categoryStyle(name: string | null): string {
-  return CATEGORY_STYLES[name ?? "Other"] ?? DEFAULT_STYLE
-}
-
-function paymentMethodStyle(value: string | null): string {
-  return value ? (PAYMENT_METHOD_STYLES[value] ?? DEFAULT_STYLE) : DEFAULT_STYLE
-}
 
 function accountTypeStyle(value: string): string {
   return ACCOUNT_TYPE_STYLES[value] ?? DEFAULT_STYLE
@@ -193,12 +185,22 @@ function relativeDueLabel(iso: string): { text: string; tone: string } {
   return { text: `in ${days}d`, tone: "text-muted-foreground" }
 }
 
+// "Today" / "Yesterday" / "Oct 12" for a transaction's date column.
+function txnDateLabel(iso: string): string {
+  const days = daysUntil(iso)
+  if (days === 0) return "Today"
+  if (days === -1) return "Yesterday"
+  const [y, m, d] = iso.split("-").map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  })
+}
+
 export function MoneySection({
   monthly,
   categoriesThisMonth,
   categoriesLastMonth,
-  methodsThisMonth,
-  methodsLastMonth,
   accounts,
   accountsThisMonth,
   accountsLastMonth,
@@ -209,8 +211,6 @@ export function MoneySection({
   monthly: MonthlyMoney[]
   categoriesThisMonth: CategorySpend[]
   categoriesLastMonth: CategorySpend[]
-  methodsThisMonth: PaymentMethodTotals[]
-  methodsLastMonth: PaymentMethodTotals[]
   accounts: AccountRow[]
   accountsThisMonth: AccountActivity[]
   accountsLastMonth: AccountActivity[]
@@ -221,10 +221,7 @@ export function MoneySection({
   const [period, setPeriod] = useState<"this" | "last">("this")
   const categories =
     period === "this" ? categoriesThisMonth : categoriesLastMonth
-  const methods = period === "this" ? methodsThisMonth : methodsLastMonth
   const accountRows = period === "this" ? accountsThisMonth : accountsLastMonth
-  const accountName = (id: string | null) =>
-    id ? accounts.find((a) => a.id === id)?.name : undefined
   const periodLabel = period === "this" ? "this month" : "last month"
   const activeSubs = subscriptions.filter((s) => s.is_active)
 
@@ -236,40 +233,30 @@ export function MoneySection({
   ) satisfies ChartConfig
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid gap-4 lg:h-[calc(100dvh-11.5rem)] lg:min-h-0 lg:grid-cols-2 lg:grid-rows-[auto_minmax(0,1fr)_minmax(0,1fr)] lg:overflow-hidden">
       <Card>
         <CardHeader>
           <CardTitle>Income vs. expenses</CardTitle>
           <CardDescription>Last 6 months</CardDescription>
         </CardHeader>
         <CardContent>
-          <ChartContainer config={monthlyConfig} className="h-64 w-full">
-            <LineChart accessibilityLayer data={monthly}>
+          <ChartContainer config={monthlyConfig} className="h-52 w-full">
+            <BarChart accessibilityLayer data={monthly}>
               <CartesianGrid vertical={false} />
               <XAxis
                 dataKey="month"
                 tickLine={false}
-                tickMargin={8}
+                tickMargin={10}
                 axisLine={false}
               />
-              <YAxis tickLine={false} axisLine={false} width={50} />
-              <ChartTooltip content={<ChartTooltipContent />} />
+              <ChartTooltip
+                cursor={false}
+                content={<ChartTooltipContent indicator="dashed" />}
+              />
               <ChartLegend content={<ChartLegendContent />} />
-              <Line
-                dataKey="income"
-                type="monotone"
-                stroke="var(--color-income)"
-                strokeWidth={2}
-                dot={{ r: 3 }}
-              />
-              <Line
-                dataKey="expenses"
-                type="monotone"
-                stroke="var(--color-expenses)"
-                strokeWidth={2}
-                dot={{ r: 3 }}
-              />
-            </LineChart>
+              <Bar dataKey="income" fill="var(--color-income)" radius={4} />
+              <Bar dataKey="expenses" fill="var(--color-expenses)" radius={4} />
+            </BarChart>
           </ChartContainer>
         </CardContent>
       </Card>
@@ -303,12 +290,12 @@ export function MoneySection({
         </CardHeader>
         <CardContent>
           {categories.length === 0 ? (
-            <p className="flex h-64 items-center justify-center text-sm text-muted-foreground">
+            <p className="flex h-52 items-center justify-center text-sm text-muted-foreground">
               No expenses logged{" "}
               {period === "this" ? "this month" : "last month"}.
             </p>
           ) : (
-            <ChartContainer config={categoryConfig} className="h-64 w-full">
+            <ChartContainer config={categoryConfig} className="h-52 w-full">
               <PieChart>
                 <ChartTooltip
                   content={
@@ -356,7 +343,7 @@ export function MoneySection({
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="flex min-h-0 flex-col">
         <CardHeader>
           <CardTitle>Cards &amp; accounts</CardTitle>
           <CardDescription>
@@ -366,13 +353,14 @@ export function MoneySection({
             <AddAccountDialog />
           </CardAction>
         </CardHeader>
-        <CardContent>
+        <CardContent className="min-h-0 flex-1 overflow-hidden p-0">
           {accountRows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="px-6 text-sm text-muted-foreground">
               No accounts yet — add one to the accounts table.
             </p>
           ) : (
-            <ul className="space-y-4">
+            <ScrollArea className="h-full">
+             <ul className="space-y-4 px-6">
               {accountRows.map((a) => {
                 const isCredit = a.account_type === "credit_card"
                 const usage =
@@ -450,71 +438,12 @@ export function MoneySection({
                 )
               })}
             </ul>
+            </ScrollArea>
           )}
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>By payment method</CardTitle>
-          <CardDescription>
-            Sent and received per method ({periodLabel}) — Zelle, cards, and
-            more
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {methods.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No transactions {periodLabel}.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Method</TableHead>
-                  <TableHead className="text-right">Received</TableHead>
-                  <TableHead className="text-right">Sent</TableHead>
-                  <TableHead className="text-right">Net</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {methods.map((m) => (
-                  <TableRow key={m.method}>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={paymentMethodStyle(m.method)}
-                      >
-                        {humanize(m.method)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums text-green-600 dark:text-green-400">
-                      {m.received > 0 ? `+${usd.format(m.received)}` : "—"}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {m.sent > 0 ? `−${usd.format(m.sent)}` : "—"}
-                    </TableCell>
-                    <TableCell
-                      className={`text-right font-medium tabular-nums ${
-                        m.net > 0
-                          ? "text-green-600 dark:text-green-400"
-                          : m.net < 0
-                            ? "text-red-600 dark:text-red-400"
-                            : ""
-                      }`}
-                    >
-                      {m.net > 0 ? "+" : m.net < 0 ? "−" : ""}
-                      {usd.format(Math.abs(m.net))}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="lg:col-span-2">
+      <Card className="flex min-h-0 flex-col">
         <CardHeader>
           <CardTitle>Subscriptions</CardTitle>
           <CardDescription>
@@ -526,162 +455,117 @@ export function MoneySection({
             <AddSubscriptionDialog accounts={accounts} />
           </CardAction>
         </CardHeader>
-        <CardContent>
+        <CardContent className="min-h-0 flex-1 overflow-hidden p-0">
           {subscriptions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="px-6 text-sm text-muted-foreground">
               Add subscriptions to the subscriptions table to track them here.
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Card</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="text-right">Per month</TableHead>
-                  <TableHead>Next charge</TableHead>
-                  <TableHead className="w-10" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <ScrollArea className="h-full">
+              <ul className="space-y-2 px-6">
                 {subscriptions.map((s) => {
-                  const monthly = subscriptionMonthlyCost(s)
                   const due = s.due_date ? relativeDueLabel(s.due_date) : null
                   return (
-                    <TableRow key={s.id} className={!s.is_active ? "opacity-50" : ""}>
-                      <TableCell>
+                    <li
+                      key={s.id}
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg bg-muted/40 px-3 py-2.5",
+                        !s.is_active && "opacity-60"
+                      )}
+                    >
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium">{s.name}</span>
+                          <span className="truncate text-sm font-medium">
+                            {s.name}
+                          </span>
                           {!s.is_active && (
                             <Badge variant="outline">Canceled</Badge>
                           )}
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        {s.category ? (
-                          <Badge
-                            variant="outline"
-                            className={categoryStyle(s.category)}
-                          >
-                            {s.category}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap text-sm">
-                        {accountName(s.account_id) ?? (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {usd.format(Number(s.amount))}
-                        <span className="text-muted-foreground">
-                          /{CYCLE_SHORT[s.billing_cycle]}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums text-muted-foreground">
-                        {usd.format(monthly)}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap text-sm">
-                        {due ? (
-                          <span className={`flex items-center gap-1 ${due.tone}`}>
-                            {daysUntil(s.due_date!) < 0 && (
-                              <AlertTriangle className="size-3" />
-                            )}
-                            {s.due_date} · {due.text}
+                        <p className="truncate text-xs text-muted-foreground">
+                          {s.category ?? humanize(s.billing_cycle)}
+                          {due ? ` · ${due.text}` : ""}
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="text-sm font-semibold tabular-nums">
+                          {usd.format(Number(s.amount))}
+                          <span className="text-xs font-normal text-muted-foreground">
+                            /{CYCLE_SHORT[s.billing_cycle]}
                           </span>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="p-1 text-right">
-                        <SubscriptionRowMenu
-                          subscription={s}
-                          accounts={accounts}
-                        />
-                      </TableCell>
-                    </TableRow>
+                        </p>
+                      </div>
+                      <SubscriptionRowMenu
+                        subscription={s}
+                        accounts={accounts}
+                      />
+                    </li>
                   )
                 })}
-              </TableBody>
-            </Table>
+              </ul>
+            </ScrollArea>
           )}
         </CardContent>
       </Card>
 
-      <Card className="lg:col-span-2">
+      <Card className="flex min-h-0 flex-col lg:col-span-2">
         <CardHeader>
           <CardTitle>Recent transactions</CardTitle>
-          <CardDescription>Your latest 10 entries</CardDescription>
+          <CardDescription>Your latest account activity</CardDescription>
           <CardAction>
             <AddTransactionDialog accounts={accounts} />
           </CardAction>
         </CardHeader>
-        <CardContent>
+        <CardContent className="min-h-0 flex-1 overflow-hidden p-0">
           {recent.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="px-6 text-sm text-muted-foreground">
               No transactions yet.
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Account</TableHead>
-                  <TableHead>Method</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recent.map((t) => (
-                  <TableRow key={t.id}>
-                    <TableCell className="whitespace-nowrap">{t.date}</TableCell>
-                    <TableCell className="max-w-56 truncate">
-                      {t.description ?? "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={categoryStyle(t.category)}
-                      >
-                        {t.category ?? "Other"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-sm">
-                      {accountName(t.account_id) ?? (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {t.payment_method ? (
-                        <Badge
-                          variant="outline"
-                          className={paymentMethodStyle(t.payment_method)}
-                        >
-                          {humanize(t.payment_method)}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell
-                      className={`text-right font-medium tabular-nums ${
-                        t.transaction_type === "income"
-                          ? "text-green-600 dark:text-green-400"
-                          : ""
-                      }`}
+            <ScrollArea className="h-full">
+              <ul className="divide-y">
+                {recent.map((t) => {
+                  const Icon = categoryIcon(t.category)
+                  const income = t.transaction_type === "income"
+                  const color = categoryColor(t.category ?? "Other")
+                  return (
+                    <li
+                      key={t.id}
+                      className="flex items-center gap-3 px-6 py-2.5"
                     >
-                      {t.transaction_type === "income" ? "+" : "−"}
-                      {usd.format(Number(t.amount))}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                        <Icon className="size-4" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">
+                          {t.description ?? t.category ?? "Transaction"}
+                        </p>
+                        <p
+                          className="truncate text-xs font-medium"
+                          style={{ color }}
+                        >
+                          {t.category ?? "Other"}
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                        {txnDateLabel(t.date)}
+                      </span>
+                      <span
+                        className={cn(
+                          "shrink-0 text-sm font-semibold tabular-nums",
+                          income
+                            ? "text-green-600 dark:text-green-400"
+                            : "text-foreground"
+                        )}
+                      >
+                        {income ? "+" : "−"}
+                        {usd.format(Number(t.amount))}
+                      </span>
+                    </li>
+                  )
+                })}
+              </ul>
+            </ScrollArea>
           )}
         </CardContent>
       </Card>

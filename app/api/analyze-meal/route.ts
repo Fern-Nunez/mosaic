@@ -85,6 +85,7 @@ export async function POST(request: Request) {
   const image = form.get("image")
   const name = String(form.get("name") ?? "").trim()
   const details = String(form.get("details") ?? "").trim()
+  const estimate = String(form.get("estimate") ?? "low").trim()
 
   if (!(image instanceof File) || image.size === 0) {
     return NextResponse.json({ error: "No photo provided." }, { status: 400 })
@@ -93,12 +94,25 @@ export async function POST(request: Request) {
   const bytes = Buffer.from(await image.arrayBuffer())
   const dataUrl = `data:${image.type || "image/jpeg"};base64,${bytes.toString("base64")}`
 
+  // How to resolve the plausible range of values. Defaults to "low" so an
+  // unknown value stays on the conservative side.
+  const ESTIMATE_GUIDANCE: Record<string, string> = {
+    low:
+      "Whenever a range of values is plausible, choose the LOW end of the range" +
+      " for calories, protein, carbs, and fat — never the midpoint or high end.",
+    middle:
+      "Whenever a range of values is plausible, choose the MIDDLE of the range" +
+      " for calories, protein, carbs, and fat — a balanced best guess.",
+    high:
+      "Whenever a range of values is plausible, choose the HIGH end of the range" +
+      " for calories, protein, carbs, and fat — never the midpoint or low end.",
+  }
+
   const prompt = [
     "Estimate the nutrition of the food in this photo (total for everything visible).",
     name && `The user calls it: "${name}".`,
     details && `The user says it contains: ${details}.`,
-    "Whenever a range of values is plausible, choose the LOW end of the range",
-    "for calories, protein, carbs, and fat — never the midpoint or high end.",
+    ESTIMATE_GUIDANCE[estimate] ?? ESTIMATE_GUIDANCE.low,
   ]
     .filter(Boolean)
     .join(" ")

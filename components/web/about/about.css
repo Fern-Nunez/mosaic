@@ -1,0 +1,16 @@
+.aboutContainer {
+    background-color: #171717;
+    height: 100vh;
+    padding: clamp(1.5rem, 0.78rem + 2.68vw, 4rem);
+}
+
+.aboutTextContainer{
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding-top: 3rem;
+}
+
+.aboutDescriptionText{
+    max-width: 95ch;
+}
