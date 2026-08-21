@@ -1,0 +1,258 @@
+/* Auth pages (login, forgot password) — plain CSS, no Tailwind, no shadcn.
+   Every value these pages use is either in the token block below or in a
+   rule in this file, so there is nothing to chase down elsewhere.
+   Class names keep the login* prefix as a namespace. */
+
+.loginPage {
+    /* --- tokens: change these to restyle the whole page --- */
+    --login-bg: #171717;                    /* same near-black as the site */
+    --login-surface: #171717;               /* card matches the page; its border defines it */
+    --login-field: #1f1f1f;                 /* inputs, lifted just enough to read as fields */
+    --login-border: rgba(255, 255, 255, 0.12);
+    --login-text: #ffffff;                  /* headings, same as the site */
+    --login-muted: #9a9a9a;                 /* body copy, same as the site */
+    --login-accent: #ffffff;                /* white pill, like the marketing button */
+    --login-accent-text: #000000;
+    --login-error: #ff6b6b;                 /* lightened so it reads on dark */
+    --login-ring: #ffffff;                  /* focus outline */
+    --login-radius: 0.75rem;
+
+    display: grid;
+    grid-template-columns: 1fr;     /* one column until desktop */
+    min-height: 100svh;
+    background: var(--login-bg);
+    color: var(--login-text);
+}
+
+/* --- left side: the form --- */
+
+.loginFormSide {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+
+.loginFormWrapper {
+    width: 100%;
+    max-width: 24rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* --- brand mark above the card --- */
+
+/* sits at the top of the card, aligned with the copy below it */
+.loginBrand {
+    margin-bottom: 1rem;
+}
+
+/* the logo carries its own dark background, so it fills the box and the
+   border-radius simply clips it */
+.loginBrandIcon {
+    width: 2.75rem;
+    height: 2.75rem;
+    margin-inline: auto;    /* fixed-width block, so centre it explicitly */
+    background: var(--login-surface);
+    margin-bottom: 1rem;
+}
+
+.loginBrandLogo {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* --- the card --- */
+
+.loginCard {
+    background: var(--login-surface);
+    border-radius: var(--login-radius);
+    padding: 1.5rem;
+}
+
+.loginCardTitle {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0 0 0.375rem;
+    text-align: center;
+}
+
+.loginCardDescription {
+    font-size: 0.875rem;
+    color: var(--login-muted);
+    margin: 0 0 1.5rem;
+    text-align: center;
+}
+
+/* --- form --- */
+
+.loginForm {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.loginField {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.loginField label {
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+/* password label sits opposite the "forgot password" link */
+.loginLabelRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.loginForgotLink {
+    font-size: 0.75rem;
+    color: var(--login-muted);
+    text-decoration: none;
+}
+
+.loginForgotLink:hover {
+    color: var(--login-text);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+.loginField input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font: inherit;
+    font-size: 0.875rem;
+    color: var(--login-text);
+    background: var(--login-field);
+    border: 1px solid var(--login-border);
+    border-radius: 0.5rem;
+}
+
+.loginField input::placeholder {
+    color: var(--login-muted);
+}
+
+.loginField input:focus-visible {
+    outline: 2px solid var(--login-ring);
+    outline-offset: 1px;
+    border-color: var(--login-ring);
+}
+
+/* --- feedback from the server action --- */
+
+.loginError {
+    font-size: 0.875rem;
+    color: var(--login-error);
+    margin: 0;
+}
+
+.loginMessage {
+    font-size: 0.875rem;
+    color: var(--login-muted);
+    margin: 0;
+}
+
+/* --- submit --- */
+
+.loginSubmit {
+    width: 100%;
+    padding: 0.5rem 1rem;
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--login-accent-text);
+    background: var(--login-accent);
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+}
+
+.loginSubmit:hover:not(:disabled) {
+    opacity: 0.9;
+}
+
+.loginSubmit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* --- login / signup toggle --- */
+
+.loginSwitch {
+    margin: 1rem 0 0;
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--login-muted);
+}
+
+.loginSwitchButton,
+.loginSwitchLink {
+    font: inherit;
+    font-weight: 500;
+    color: var(--login-text);
+    background: none;
+    border: none;
+    padding: 0;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.loginSwitchButton:hover,
+.loginSwitchLink:hover {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+/* --- right side: the picture, desktop only ---
+   Hidden below 1024px so phones and tablets get the full-width form. */
+
+.loginImageSide {
+    display: none;
+}
+
+@media (min-width: 1024px) {
+    .loginPage {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .loginImageSide {
+        display: block;
+        position: relative;     /* next/image fill anchors to this */
+        overflow: hidden;
+    }
+
+    .loginImage {
+        object-fit: cover;
+    }
+}
+
+/* Chrome repaints autofilled fields with its own light background; the inset
+   shadow trick is the only reliable way to keep them on the dark palette */
+.loginField input:-webkit-autofill,
+.loginField input:-webkit-autofill:hover,
+.loginField input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--login-text);
+    box-shadow: 0 0 0 1000px var(--login-field) inset;
+    caret-color: var(--login-text);
+}
+
+/* --- entrance animation ---
+   These start hidden so there is no flash of the finished layout before
+   GSAP runs. Anyone who has asked for reduced motion just gets them. */
+
+.loginReveal {
+    opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .loginReveal {
+        opacity: 1;
+    }
+}

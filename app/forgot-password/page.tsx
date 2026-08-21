@@ -1,20 +1,14 @@
 "use client"
 
-import { useActionState } from "react"
+import { useActionState, useEffect, useRef } from "react"
+import Image from "next/image"
 import Link from "next/link"
-import { LayoutGrid } from "lucide-react"
+import gsap from "gsap"
 
 import { requestPasswordReset, type AuthState } from "@/app/login/actions"
-import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import "../auth.css"
+
+const REDUCED_MOTION = "(prefers-reduced-motion: reduce)"
 
 export default function ForgotPasswordPage() {
   const [state, action, pending] = useActionState<AuthState, FormData>(
@@ -22,31 +16,62 @@ export default function ForgotPasswordPage() {
     null
   )
 
-  return (
-    <main className="flex min-h-svh flex-1 items-center justify-center bg-muted/40 p-4">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="flex flex-col items-center gap-2 text-center">
-          <div className="flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <LayoutGrid className="size-5" />
-          </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Mosaic</h1>
-          <p className="text-sm text-muted-foreground">
-            Your life, in one picture.
-          </p>
-        </div>
+  const pageRef = useRef<HTMLElement>(null)
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Reset your password</CardTitle>
-            <CardDescription>
+  /* entrance — only the card's contents animate. The picture is left
+     alone on purpose: these pages remount on every navigation, so
+     animating it would replay the fade each time you move between them. */
+  useEffect(() => {
+    const reduced = window.matchMedia(REDUCED_MOTION).matches
+
+    const ctx = gsap.context(() => {
+      if (reduced) {
+        gsap.set(".loginReveal", { opacity: 1, y: 0 })
+        return
+      }
+
+      gsap.fromTo(
+        ".loginReveal",
+        { opacity: 0, y: 16 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.5,
+          ease: "power2.out",
+          stagger: 0.06,
+        }
+      )
+    }, pageRef)
+
+    return () => ctx.revert()
+  }, [])
+
+  return (
+    <main className="loginPage" ref={pageRef}>
+      <section className="loginFormSide">
+        <div className="loginFormWrapper">
+          <div className="loginCard">
+            <div className="loginBrand loginReveal">
+              <div className="loginBrandIcon">
+                <Image
+                  src="/branding/logo.svg"
+                  alt="Mosaic"
+                  width={44}
+                  height={44}
+                  className="loginBrandLogo"
+                />
+              </div>
+            </div>
+
+            <h1 className="loginCardTitle loginReveal">Reset your password</h1>
+            <p className="loginCardDescription loginReveal">
               Enter your email and we&apos;ll send you a reset link.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form action={action} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
+            </p>
+
+            <form action={action} className="loginForm">
+              <div className="loginField loginReveal">
+                <label htmlFor="email">Email</label>
+                <input
                   id="email"
                   name="email"
                   type="email"
@@ -56,30 +81,41 @@ export default function ForgotPasswordPage() {
                 />
               </div>
 
-              {state?.error && (
-                <p className="text-sm text-destructive">{state.error}</p>
-              )}
+              {state?.error && <p className="loginError">{state.error}</p>}
               {state?.message && (
-                <p className="text-sm text-muted-foreground">{state.message}</p>
+                <p className="loginMessage">{state.message}</p>
               )}
 
-              <Button type="submit" className="w-full" disabled={pending}>
+              <button
+                type="submit"
+                className="loginSubmit loginReveal"
+                disabled={pending}
+              >
                 {pending ? "Sending…" : "Send reset link"}
-              </Button>
+              </button>
             </form>
 
-            <p className="mt-4 text-center text-sm text-muted-foreground">
+            <p className="loginSwitch loginReveal">
               Remembered it?{" "}
-              <Link
-                href="/login"
-                className="font-medium text-foreground underline-offset-4 hover:underline"
-              >
+              <Link href="/login" className="loginSwitchLink">
                 Sign in
               </Link>
             </p>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </div>
+      </section>
+
+      {/* decorative — swap the src for whatever image you want */}
+      <aside className="loginImageSide">
+        <Image
+          src="/images/homepage/placeholder.jpg"
+          alt=""
+          fill
+          className="loginImage"
+          sizes="50vw"
+          priority
+        />
+      </aside>
     </main>
   )
 }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import "./hero.css";
 import HPButton from "../homepageButton/HPButton";
 
@@ -14,7 +15,10 @@ export default function Hero() {
                 <p>Every expense, workout, calorie, journal entry, habit, project, and goal — all connected in one place.</p>
             </div>
             <div className="buttonContainer">
-                <HPButton/>   
+                <Link href={"/dashboard"}>
+                    <HPButton/>
+                </Link>
+                
             </div>
             
         </div>

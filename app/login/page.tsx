@@ -1,23 +1,19 @@
 "use client"
 
-import { useActionState, useState } from "react"
+import { useActionState, useEffect, useRef, useState } from "react"
+import Image from "next/image"
 import Link from "next/link"
-import { LayoutGrid } from "lucide-react"
+import gsap from "gsap"
 
 import { login, signup, type AuthState } from "./actions"
-import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import "../auth.css"
+
+const REDUCED_MOTION = "(prefers-reduced-motion: reduce)"
+
+type Mode = "login" | "signup"
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<"login" | "signup">("login")
+  const [mode, setMode] = useState<Mode>("login")
   const [loginState, loginAction, loginPending] = useActionState<
     AuthState,
     FormData
@@ -30,38 +26,106 @@ export default function LoginPage() {
   const state = mode === "login" ? loginState : signupState
   const pending = mode === "login" ? loginPending : signupPending
 
-  return (
-    <main className="flex min-h-svh flex-1 items-center justify-center bg-muted/40 p-4">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="flex flex-col items-center gap-2 text-center">
-          <div className="flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <LayoutGrid className="size-5" />
-          </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Mosaic</h1>
-          <p className="text-sm text-muted-foreground">
-            Your life, in one picture.
-          </p>
-        </div>
+  const pageRef = useRef<HTMLElement>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
+  const hasMounted = useRef(false)
 
-        <Card>
-          <CardHeader>
-            <CardTitle>
+  /* entrance — only the card's contents animate. The picture is left
+     alone on purpose: these pages remount on every navigation, so
+     animating it would replay the fade each time you move between them. */
+  useEffect(() => {
+    const reduced = window.matchMedia(REDUCED_MOTION).matches
+
+    const ctx = gsap.context(() => {
+      if (reduced) {
+        gsap.set(".loginReveal", { opacity: 1, y: 0 })
+        return
+      }
+
+      gsap.fromTo(
+        ".loginReveal",
+        { opacity: 0, y: 16 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.5,
+          ease: "power2.out",
+          stagger: 0.06,
+        }
+      )
+    }, pageRef)
+
+    return () => ctx.revert()
+  }, [])
+
+  /* mode switch — the card contents replay the same staggered fade-up they
+     do on load, so switching feels like the page arriving again */
+  useEffect(() => {
+    if (!hasMounted.current) {
+      hasMounted.current = true
+      return
+    }
+    if (window.matchMedia(REDUCED_MOTION).matches) return
+
+    const card = cardRef.current
+    if (!card) return
+
+    const targets = card.querySelectorAll(".loginReveal")
+    const tween = gsap.fromTo(
+      targets,
+      { opacity: 0, y: 16 },
+      {
+        opacity: 1,
+        y: 0,
+        duration: 0.5,
+        ease: "power2.out",
+        stagger: 0.06,
+        /* the entrance timeline owns these same props — overwrite stops
+           the two from fighting if a switch lands mid-entrance */
+        overwrite: "auto",
+      }
+    )
+
+    return () => {
+      tween.kill()
+      gsap.set(targets, { opacity: 1, y: 0 })
+    }
+  }, [mode])
+
+
+  return (
+    <main className="loginPage" ref={pageRef}>
+      <section className="loginFormSide">
+        <div className="loginFormWrapper">
+          <div className="loginCard" ref={cardRef}>
+            <div className="loginBrand loginReveal">
+              <div className="loginBrandIcon">
+                <Image
+                  src="/branding/logo.svg"
+                  alt="Mosaic"
+                  width={44}
+                  height={44}
+                  className="loginBrandLogo"
+                />
+              </div>
+            </div>
+
+            <h1 className="loginCardTitle loginReveal">
               {mode === "login" ? "Welcome back" : "Create an account"}
-            </CardTitle>
-            <CardDescription>
+            </h1>
+            <p className="loginCardDescription loginReveal">
               {mode === "login"
                 ? "Sign in to see your dashboard."
                 : "Sign up with your email and a password."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+            </p>
+
             <form
               action={mode === "login" ? loginAction : signupAction}
-              className="space-y-4"
+              className="loginForm"
             >
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
+              <div className="loginField loginReveal">
+                <label htmlFor="email">Email</label>
+                <input
                   id="email"
                   name="email"
                   type="email"
@@ -70,19 +134,17 @@ export default function LoginPage() {
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
+
+              <div className="loginField loginReveal">
+                <div className="loginLabelRow">
+                  <label htmlFor="password">Password</label>
                   {mode === "login" && (
-                    <Link
-                      href="/forgot-password"
-                      className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                    >
+                    <Link href="/forgot-password" className="loginForgotLink">
                       Forgot password?
                     </Link>
                   )}
                 </div>
-                <Input
+                <input
                   id="password"
                   name="password"
                   type="password"
@@ -94,29 +156,31 @@ export default function LoginPage() {
                 />
               </div>
 
-              {state?.error && (
-                <p className="text-sm text-destructive">{state.error}</p>
-              )}
+              {state?.error && <p className="loginError">{state.error}</p>}
               {state?.message && (
-                <p className="text-sm text-muted-foreground">{state.message}</p>
+                <p className="loginMessage">{state.message}</p>
               )}
 
-              <Button type="submit" className="w-full" disabled={pending}>
+              <button
+                type="submit"
+                className="loginSubmit loginReveal"
+                disabled={pending}
+              >
                 {pending
                   ? "Please wait…"
                   : mode === "login"
                     ? "Sign in"
                     : "Sign up"}
-              </Button>
+              </button>
             </form>
 
-            <p className="mt-4 text-center text-sm text-muted-foreground">
+            <p className="loginSwitch loginReveal">
               {mode === "login" ? (
                 <>
                   No account?{" "}
                   <button
                     type="button"
-                    className="font-medium text-foreground underline-offset-4 hover:underline"
+                    className="loginSwitchButton"
                     onClick={() => setMode("signup")}
                   >
                     Sign up
@@ -127,7 +191,7 @@ export default function LoginPage() {
                   Already have an account?{" "}
                   <button
                     type="button"
-                    className="font-medium text-foreground underline-offset-4 hover:underline"
+                    className="loginSwitchButton"
                     onClick={() => setMode("login")}
                   >
                     Sign in
@@ -135,9 +199,21 @@ export default function LoginPage() {
                 </>
               )}
             </p>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </div>
+      </section>
+
+      {/* decorative — swap the src for whatever image you want */}
+      <aside className="loginImageSide">
+        <Image
+          src="/images/homepage/placeholder.jpg"
+          alt=""
+          fill
+          className="loginImage"
+          sizes="50vw"
+          priority
+        />
+      </aside>
     </main>
   )
 }

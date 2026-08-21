@@ -1,8 +1,11 @@
-.HPButtonContainer {
+.HPButtonContainer button {
     background-color: #FFFFFF;
     padding: 0.5rem 2rem;
+    border: none;
     border-radius: 999px;
     color: #000000;
+    font-family: inherit;
     font-size: clamp(1rem, 0.94rem + 0.21vw, 1.2rem);
     font-weight: 400;
+    cursor: pointer;
 }
