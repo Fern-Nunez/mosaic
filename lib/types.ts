@@ -59,6 +59,7 @@ export type NutritionRow = {
   protein: number | null
   carbs: number | null
   fat: number | null
+  fiber: number | null
   portion_size: string | null
   restaurant: string | null
   notes: string | null

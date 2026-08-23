@@ -239,6 +239,7 @@ export type DailyNutrition = {
   protein: number
   carbs: number
   fat: number
+  fiber: number
 }
 
 export type NutritionGoals = {
@@ -246,7 +247,19 @@ export type NutritionGoals = {
   protein: number
   carbs: number
   fat: number
+  fiber: number
 }
+
+/**
+ * How the meal analyzer resolves an ambiguous portion into macros. It's
+ * saved with the goals rather than picked per photo, so every meal gets
+ * estimated the same way.
+ */
+export type EstimateLevel = "low" | "middle" | "high"
+
+export const ESTIMATE_LEVELS: EstimateLevel[] = ["low", "middle", "high"]
+
+export const DEFAULT_ESTIMATE_LEVEL: EstimateLevel = "low"
 
 // Default daily targets used until the user sets their own (and the
 // fallback when the goals columns/row aren't present yet). Set for a lean
@@ -256,6 +269,7 @@ export const DEFAULT_NUTRITION_GOALS: NutritionGoals = {
   protein: 160,
   carbs: 380,
   fat: 70,
+  fiber: 30,
 }
 
 export function dailyNutrition(rows: NutritionRow[], days = 14): DailyNutrition[] {
@@ -263,7 +277,15 @@ export function dailyNutrition(rows: NutritionRow[], days = 14): DailyNutrition[
   const byKey = new Map<string, DailyNutrition>(
     keys.map((k) => [
       k,
-      { date: k, label: shortDate(k), calories: 0, protein: 0, carbs: 0, fat: 0 },
+      {
+        date: k,
+        label: shortDate(k),
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        fiber: 0,
+      },
     ])
   )
   for (const row of rows) {
@@ -273,6 +295,7 @@ export function dailyNutrition(rows: NutritionRow[], days = 14): DailyNutrition[
     bucket.protein += Number(row.protein) || 0
     bucket.carbs += Number(row.carbs) || 0
     bucket.fat += Number(row.fat) || 0
+    bucket.fiber += Number(row.fiber) || 0
   }
   return keys.map((k) => byKey.get(k)!)
 }

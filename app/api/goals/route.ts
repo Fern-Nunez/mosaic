@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server"
 
+import {
+  DEFAULT_ESTIMATE_LEVEL,
+  ESTIMATE_LEVELS,
+  type EstimateLevel,
+} from "@/lib/stats"
 import { createClient } from "@/lib/supabase/server"
 
 // Maps the JSON body fields to their user_settings columns.
@@ -8,6 +13,7 @@ const FIELDS = [
   ["protein", "protein_goal"],
   ["carbs", "carb_goal"],
   ["fat", "fat_goal"],
+  ["fiber", "fiber_goal"],
 ] as const
 
 export async function POST(request: Request) {
@@ -37,9 +43,21 @@ export async function POST(request: Request) {
     goals[key] = value
   }
 
-  const { error } = await supabase
-    .from("user_settings")
-    .upsert({ user_id: user.id, ...row }, { onConflict: "user_id" })
+  // The estimate bias the meal analyzer uses. Lives with the goals so it's
+  // chosen once here rather than on every photo.
+  const rawLevel = String(body?.estimateLevel ?? DEFAULT_ESTIMATE_LEVEL)
+  if (!ESTIMATE_LEVELS.includes(rawLevel as EstimateLevel)) {
+    return NextResponse.json(
+      { error: "Estimate level must be low, middle, or high." },
+      { status: 400 }
+    )
+  }
+  const estimateLevel = rawLevel as EstimateLevel
+
+  const { error } = await supabase.from("user_settings").upsert(
+    { user_id: user.id, ...row, estimate_level: estimateLevel },
+    { onConflict: "user_id" }
+  )
 
   if (error) {
     // Most likely the goal columns don't exist yet — point the user at the
@@ -50,5 +68,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 500 })
   }
 
-  return NextResponse.json({ goals })
+  return NextResponse.json({ goals, estimateLevel })
 }

@@ -22,6 +22,7 @@ const RESPONSE_SCHEMA = {
         protein: { type: "number", description: "grams" },
         carbs: { type: "number", description: "grams" },
         fat: { type: "number", description: "grams" },
+        fiber: { type: "number", description: "grams of dietary fiber" },
         portion_size: {
           type: "string",
           description: "Estimated portion, e.g. '1 plate, ~350g'",
@@ -37,6 +38,7 @@ const RESPONSE_SCHEMA = {
         "protein",
         "carbs",
         "fat",
+        "fiber",
         "portion_size",
         "notes",
       ],
@@ -94,18 +96,19 @@ export async function POST(request: Request) {
   const bytes = Buffer.from(await image.arrayBuffer())
   const dataUrl = `data:${image.type || "image/jpeg"};base64,${bytes.toString("base64")}`
 
-  // How to resolve the plausible range of values. Defaults to "low" so an
-  // unknown value stays on the conservative side.
+  // How to resolve the plausible range of values. Comes from the user's
+  // saved nutrition goals; defaults to "low" so an unknown value stays on
+  // the conservative side.
   const ESTIMATE_GUIDANCE: Record<string, string> = {
     low:
       "Whenever a range of values is plausible, choose the LOW end of the range" +
-      " for calories, protein, carbs, and fat — never the midpoint or high end.",
+      " for calories, protein, carbs, fat, and fiber — never the midpoint or high end.",
     middle:
       "Whenever a range of values is plausible, choose the MIDDLE of the range" +
-      " for calories, protein, carbs, and fat — a balanced best guess.",
+      " for calories, protein, carbs, fat, and fiber — a balanced best guess.",
     high:
       "Whenever a range of values is plausible, choose the HIGH end of the range" +
-      " for calories, protein, carbs, and fat — never the midpoint or low end.",
+      " for calories, protein, carbs, fat, and fiber — never the midpoint or low end.",
   }
 
   const prompt = [

@@ -17,6 +17,7 @@ import {
   activeSubscriptionsMonthly,
   categorySpend,
   dailyNutrition,
+  DEFAULT_ESTIMATE_LEVEL,
   DEFAULT_NUTRITION_GOALS,
   lastNDayKeys,
   latestMood,
@@ -26,6 +27,7 @@ import {
   weightChange,
   weightSeries,
   workoutsThisWeek,
+  type EstimateLevel,
 } from "@/lib/stats"
 import { createClient } from "@/lib/supabase/server"
 import type {
@@ -149,7 +151,7 @@ export default async function DashboardPage() {
     supabase
       .from("nutrition")
       .select(
-        "id, date, meal_type, food_name, calories, protein, carbs, fat, portion_size, restaurant, notes"
+        "id, date, meal_type, food_name, calories, protein, carbs, fat, fiber, portion_size, restaurant, notes"
       )
       .eq("user_id", user.id)
       .eq("workspace", workspace)
@@ -189,7 +191,9 @@ export default async function DashboardPage() {
   // (migration not applied), fall back to defaults so the tab still works.
   const { data: settingsData } = await supabase
     .from("user_settings")
-    .select("calorie_goal, protein_goal, carb_goal, fat_goal")
+    .select(
+      "calorie_goal, protein_goal, carb_goal, fat_goal, fiber_goal, estimate_level"
+    )
     .eq("user_id", user.id)
     .maybeSingle()
 
@@ -198,7 +202,11 @@ export default async function DashboardPage() {
     protein: settingsData?.protein_goal ?? DEFAULT_NUTRITION_GOALS.protein,
     carbs: settingsData?.carb_goal ?? DEFAULT_NUTRITION_GOALS.carbs,
     fat: settingsData?.fat_goal ?? DEFAULT_NUTRITION_GOALS.fat,
+    fiber: settingsData?.fiber_goal ?? DEFAULT_NUTRITION_GOALS.fiber,
   }
+
+  const estimateLevel = (settingsData?.estimate_level ??
+    DEFAULT_ESTIMATE_LEVEL) as EstimateLevel
 
   const transactionRows = (transactions.data ?? []) as TransactionRow[]
   const accountRows = (accounts.data ?? []) as AccountRow[]
@@ -289,6 +297,7 @@ export default async function DashboardPage() {
               (row) => row.date >= lastNDayKeys(8)[0]
             )}
             goals={nutritionGoals}
+            estimateLevel={estimateLevel}
             userId={user.id}
           />
         ),

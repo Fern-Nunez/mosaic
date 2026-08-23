@@ -6,15 +6,18 @@ import {
   Droplet,
   Drumstick,
   Flame,
+  Leaf,
   Loader2,
   SlidersHorizontal,
   Wheat,
 } from "lucide-react"
 
 import {
+  ESTIMATE_LEVELS,
   lastNDayKeys,
   todayKey,
   type DailyNutrition,
+  type EstimateLevel,
   type NutritionGoals,
 } from "@/lib/stats"
 import type { NutritionRow } from "@/lib/types"
@@ -106,7 +109,23 @@ const MACROS: {
     bar: "from-violet-200 to-violet-400",
     text: "text-violet-600 dark:text-violet-300",
   },
+  {
+    key: "fiber",
+    label: "Fiber",
+    unit: "g",
+    icon: Leaf,
+    chip: "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300",
+    bar: "from-emerald-200 to-emerald-400",
+    text: "text-emerald-600 dark:text-emerald-300",
+  },
 ]
+
+// Labels for the low/middle/high estimate bias, set alongside the goals.
+const ESTIMATE_LABELS: Record<EstimateLevel, string> = {
+  low: "Low",
+  middle: "Middle",
+  high: "High",
+}
 
 // Sentinel selection value for the whole-week view.
 const WEEK = "week"
@@ -125,16 +144,23 @@ export function NutritionSection({
   daily,
   meals,
   goals: initialGoals,
+  estimateLevel: initialEstimateLevel,
   userId,
 }: {
   daily: DailyNutrition[]
   meals: NutritionRow[]
   goals: NutritionGoals
+  estimateLevel: EstimateLevel
   userId: string
 }) {
   // Goals load from the database (so they sync across devices) but stay
   // editable here without a full reload.
   const [goals, setGoals] = React.useState<NutritionGoals>(initialGoals)
+
+  // The estimate bias saved with the goals, handed to every meal analysis.
+  const [estimateLevel, setEstimateLevel] = React.useState<EstimateLevel>(
+    initialEstimateLevel
+  )
 
   // Selection is either a YYYY-MM-DD day key or the WEEK sentinel.
   const [selection, setSelection] = React.useState<string>(() => todayKey())
@@ -168,8 +194,9 @@ export function NutritionSection({
         protein: sum.protein + d.protein,
         carbs: sum.carbs + d.carbs,
         fat: sum.fat + d.fat,
+        fiber: sum.fiber + d.fiber,
       }),
-      { calories: 0, protein: 0, carbs: 0, fat: 0 }
+      { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 }
     )
   }, [periodDays])
 
@@ -190,7 +217,14 @@ export function NutritionSection({
   return (
     <div className="grid gap-4">
       <div className="flex items-center justify-end gap-2">
-        <GoalsDialog goals={goals} onSaved={setGoals} />
+        <GoalsDialog
+          goals={goals}
+          estimateLevel={estimateLevel}
+          onSaved={(next, level) => {
+            setGoals(next)
+            setEstimateLevel(level)
+          }}
+        />
         <Select
           value={selection}
           onValueChange={(value) => {
@@ -209,7 +243,7 @@ export function NutritionSection({
             ))}
           </SelectContent>
         </Select>
-        <MealSnap userId={userId} />
+        <MealSnap userId={userId} estimateLevel={estimateLevel} />
       </div>
 
       <Card className="overflow-hidden">
@@ -307,6 +341,7 @@ export function NutritionSection({
                   <TableHead>Food</TableHead>
                   <TableHead className="text-right">Calories</TableHead>
                   <TableHead className="text-right">Protein</TableHead>
+                  <TableHead className="text-right">Fiber</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -337,6 +372,9 @@ export function NutritionSection({
                     <TableCell className="text-right tabular-nums">
                       {m.protein != null ? `${Number(m.protein)}g` : "—"}
                     </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {m.fiber != null ? `${Number(m.fiber)}g` : "—"}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -350,10 +388,12 @@ export function NutritionSection({
 
 function GoalsDialog({
   goals,
+  estimateLevel,
   onSaved,
 }: {
   goals: NutritionGoals
-  onSaved: (goals: NutritionGoals) => void
+  estimateLevel: EstimateLevel
+  onSaved: (goals: NutritionGoals, estimateLevel: EstimateLevel) => void
 }) {
   const goalsToDraft = React.useCallback(
     (g: NutritionGoals): Record<MacroKey, string> => ({
@@ -361,6 +401,7 @@ function GoalsDialog({
       protein: String(g.protein),
       carbs: String(g.carbs),
       fat: String(g.fat),
+      fiber: String(g.fiber),
     }),
     []
   )
@@ -369,6 +410,7 @@ function GoalsDialog({
   const [draft, setDraft] = React.useState<Record<MacroKey, string>>(() =>
     goalsToDraft(goals)
   )
+  const [level, setLevel] = React.useState<EstimateLevel>(estimateLevel)
   const [busy, setBusy] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
@@ -376,6 +418,7 @@ function GoalsDialog({
   function onOpenChange(next: boolean) {
     if (next) {
       setDraft(goalsToDraft(goals))
+      setLevel(estimateLevel)
       setError(null)
     }
     setOpen(next)
@@ -391,6 +434,7 @@ function GoalsDialog({
         protein: 0,
         carbs: 0,
         fat: 0,
+        fiber: 0,
       }
       for (const macro of MACROS) {
         const value = Number(draft[macro.key])
@@ -404,11 +448,11 @@ function GoalsDialog({
       const res = await fetch("/api/goals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, estimateLevel: level }),
       })
       const json = await res.json().catch(() => null)
       if (!res.ok) throw new Error(json?.error ?? "Couldn't save your goals.")
-      onSaved(json.goals as NutritionGoals)
+      onSaved(json.goals as NutritionGoals, json.estimateLevel as EstimateLevel)
       setOpen(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't save your goals.")
@@ -431,7 +475,8 @@ function GoalsDialog({
         <DialogHeader>
           <DialogTitle>Daily goals</DialogTitle>
           <DialogDescription>
-            Your targets for a single day. The bars fill toward these.
+            Your targets for a single day — the bars fill toward these — and
+            how the meal analyzer estimates portions.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={save} className="space-y-4">
@@ -453,6 +498,32 @@ function GoalsDialog({
                 />
               </div>
             ))}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Estimate macros on the…</Label>
+            <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
+              {ESTIMATE_LEVELS.map((value) => (
+                <Button
+                  key={value}
+                  type="button"
+                  size="sm"
+                  variant={level === value ? "secondary" : "ghost"}
+                  className={
+                    level === value ? "shadow-sm" : "text-muted-foreground"
+                  }
+                  onClick={() => setLevel(value)}
+                  disabled={busy}
+                  aria-pressed={level === value}
+                >
+                  {ESTIMATE_LABELS[value]}
+                </Button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              How the AI reads an ambiguous portion in a meal photo. Low is
+              conservative; high assumes larger portions.
+            </p>
           </div>
 
           {error && (

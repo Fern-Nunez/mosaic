@@ -6,6 +6,7 @@ import { Camera, Loader2, RefreshCcw, Sparkles } from "lucide-react"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { createClient } from "@/lib/supabase/client"
+import type { EstimateLevel } from "@/lib/stats"
 import { useWorkspace } from "@/components/dashboard/workspace-context"
 import type { NutritionRow } from "@/lib/types"
 import { Button } from "@/components/ui/button"
@@ -41,21 +42,13 @@ const MEAL_TYPES = [
   { value: "drink", label: "Drink" },
 ] as const
 
-// How aggressively the AI resolves an ambiguous portion into macros.
-const ESTIMATE_LEVELS = [
-  { value: "low", label: "Low" },
-  { value: "middle", label: "Middle" },
-  { value: "high", label: "High" },
-] as const
-
-type EstimateLevel = (typeof ESTIMATE_LEVELS)[number]["value"]
-
 type Estimate = {
   food_name: string
   calories: number
   protein: number
   carbs: number
   fat: number
+  fiber: number
   portion_size: string
   notes: string
 }
@@ -95,7 +88,14 @@ async function downscale(file: File, maxDim = 1280): Promise<Blob> {
   }
 }
 
-export function MealSnap({ userId }: { userId: string }) {
+export function MealSnap({
+  userId,
+  // Chosen once alongside the daily goals, not per photo.
+  estimateLevel,
+}: {
+  userId: string
+  estimateLevel: EstimateLevel
+}) {
   const router = useRouter()
   const isMobile = useIsMobile()
   const supabase = React.useMemo(() => createClient(), [])
@@ -109,7 +109,6 @@ export function MealSnap({ userId }: { userId: string }) {
   const [preview, setPreview] = React.useState<string | null>(null)
   const [name, setName] = React.useState("")
   const [details, setDetails] = React.useState("")
-  const [estimateLevel, setEstimateLevel] = React.useState<EstimateLevel>("low")
   const [analyzing, setAnalyzing] = React.useState(false)
   const [saving, setSaving] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -120,6 +119,7 @@ export function MealSnap({ userId }: { userId: string }) {
   const [protein, setProtein] = React.useState("")
   const [carbs, setCarbs] = React.useState("")
   const [fat, setFat] = React.useState("")
+  const [fiber, setFiber] = React.useState("")
   const [portion, setPortion] = React.useState("")
   const [mealType, setMealType] = React.useState<string>("dinner")
   const [notes, setNotes] = React.useState("")
@@ -139,7 +139,6 @@ export function MealSnap({ userId }: { userId: string }) {
     })
     setName("")
     setDetails("")
-    setEstimateLevel("low")
     setError(null)
     setAnalyzing(false)
     setSaving(false)
@@ -194,6 +193,7 @@ export function MealSnap({ userId }: { userId: string }) {
     setProtein(String(estimate.protein))
     setCarbs(String(estimate.carbs))
     setFat(String(estimate.fat))
+    setFiber(String(estimate.fiber))
     setPortion(estimate.portion_size)
     setNotes(estimate.notes)
     setMealType(defaultMealType() ?? "dinner")
@@ -215,6 +215,7 @@ export function MealSnap({ userId }: { userId: string }) {
       protein: protein ? Number(protein) : null,
       carbs: carbs ? Number(carbs) : null,
       fat: fat ? Number(fat) : null,
+      fiber: fiber ? Number(fiber) : null,
       portion_size: portion.trim() || null,
       notes: notes.trim() || null,
     })
@@ -280,31 +281,6 @@ export function MealSnap({ userId }: { userId: string }) {
         />
         <p className="text-xs text-muted-foreground">
           The more you tell it, the better the estimate.
-        </p>
-      </div>
-
-      <div className="space-y-1.5">
-        <Label>Estimate macros on the…</Label>
-        <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
-          {ESTIMATE_LEVELS.map((level) => (
-            <Button
-              key={level.value}
-              type="button"
-              size="sm"
-              variant={estimateLevel === level.value ? "secondary" : "ghost"}
-              className={
-                estimateLevel === level.value ? "shadow-sm" : "text-muted-foreground"
-              }
-              onClick={() => setEstimateLevel(level.value)}
-              disabled={analyzing}
-              aria-pressed={estimateLevel === level.value}
-            >
-              {level.label}
-            </Button>
-          ))}
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Low is conservative; high assumes larger portions.
         </p>
       </div>
 
@@ -404,6 +380,17 @@ export function MealSnap({ userId }: { userId: string }) {
             inputMode="decimal"
             value={fat}
             onChange={(e) => setFat(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="review-fiber">Fiber (g)</Label>
+          <Input
+            id="review-fiber"
+            type="number"
+            step="0.1"
+            inputMode="decimal"
+            value={fiber}
+            onChange={(e) => setFiber(e.target.value)}
           />
         </div>
       </div>
