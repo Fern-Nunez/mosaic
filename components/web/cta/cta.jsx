@@ -2,6 +2,7 @@ import HPButton from "../homepageButton/HPButton";
 import "./cta.css";
 import GlassShards from "@/components/web/glass/glassShards";
 import Reveal from "@/components/web/reveal/reveal";
+import Link from "next/link";
 
 export default function CTA() {
   return (
@@ -14,7 +15,9 @@ export default function CTA() {
             <h1>Your Life's <br/>Already a Mosaic.</h1>
             <p className="ctaDesc">Start Piecing it Together.</p>
             <div className="ctaButtonContainer">
+              <Link href={"/dashboard"}>
                 <HPButton/>
+              </Link>
             </div>
         </Reveal>
     </div>
