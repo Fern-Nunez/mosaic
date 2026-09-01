@@ -131,3 +131,15 @@ export type WeightRow = {
   legs: number | null
   notes: string | null
 }
+
+export type SleepRow = {
+  id: string
+  date: string
+  /** Tracker sleep score, 0-100. Null when only duration was logged. */
+  score: number | null
+  /** Hours actually asleep. 6.5 = six and a half. */
+  hours: number | null
+  bedtime: string | null
+  wake_time: string | null
+  notes: string | null
+}

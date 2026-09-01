@@ -9,6 +9,8 @@ import { JobsSection } from "@/components/dashboard/jobs-section"
 import { JournalSection } from "@/components/dashboard/journal-section"
 import { MoneySection } from "@/components/dashboard/money-section"
 import { NutritionSection } from "@/components/dashboard/nutrition-section"
+import { OverlayChart } from "@/components/dashboard/overlay-chart"
+import { SleepSection } from "@/components/dashboard/sleep-section"
 import { WeightSection } from "@/components/dashboard/weight-section"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
@@ -36,6 +38,7 @@ import type {
   JobApplicationRow,
   JournalRow,
   NutritionRow,
+  SleepRow,
   SubscriptionRow,
   TransactionRow,
   WeightRow,
@@ -123,6 +126,7 @@ export default async function DashboardPage() {
     journal,
     weight,
     jobs,
+    sleep,
   ] = await Promise.all([
     supabase
       .from("transactions")
@@ -184,6 +188,12 @@ export default async function DashboardPage() {
       .eq("user_id", user.id)
       .eq("workspace", workspace)
       .order("applied_date", { ascending: false }),
+    supabase
+      .from("sleep")
+      .select("id, date, score, hours, bedtime, wake_time, notes")
+      .eq("user_id", user.id)
+      .eq("workspace", workspace)
+      .order("date", { ascending: false }),
   ])
 
   // Daily nutrition goals live on user_settings so they sync across
@@ -215,6 +225,9 @@ export default async function DashboardPage() {
   const gymRows = (gym.data ?? []) as GymRow[]
   const journalRows = (journal.data ?? []) as JournalRow[]
   const weightRows = (weight.data ?? []) as WeightRow[]
+  // Falls back to empty when the sleep migration has not been run yet, so
+  // the dashboard still loads rather than erroring on a missing table.
+  const sleepRows = (sleep.data ?? []) as SleepRow[]
   const jobRows = (jobs.data ?? []) as JobApplicationRow[]
 
   const totals = moneyTotalsThisMonth(transactionRows)
@@ -271,6 +284,17 @@ export default async function DashboardPage() {
                 hint={`${journalRows.length} total entries`}
               />
             </div>
+
+            <OverlayChart
+              rows={{
+                weight: weightRows,
+                sleep: sleepRows,
+                nutrition: nutritionRows,
+                gym: gymRows,
+                transactions: transactionRows,
+                journal: journalRows,
+              }}
+            />
           </div>
         ),
         // Keyed by workspace so sections holding client state (journal
@@ -304,6 +328,9 @@ export default async function DashboardPage() {
         gym: <GymSection key={workspace} rows={gymRows} userId={user.id} />,
         weight: (
           <WeightSection key={workspace} rows={weightRows} userId={user.id} />
+        ),
+        sleep: (
+          <SleepSection key={workspace} rows={sleepRows} userId={user.id} />
         ),
         journal: (
           <JournalSection

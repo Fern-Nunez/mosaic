@@ -90,14 +90,8 @@
 
 /* Optional: separate website values in dark mode. Uncomment and fill in if
    the site respects the .dark class. */
-/*
+
 .dark [data-surface="web"] {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
-}
-*/
-
-html:has([data-surface="web"]) {
-  background-color: #171717;
-  color-scheme: dark;
 }

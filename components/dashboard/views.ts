@@ -5,6 +5,7 @@ import {
   CircleDot,
   Dumbbell,
   LayoutDashboard,
+  Moon,
   Scale,
   Utensils,
   Wallet,
@@ -18,6 +19,7 @@ export type DashboardView = {
     | "nutrition"
     | "gym"
     | "weight"
+    | "sleep"
     | "journal"
     | "habits"
     | "jobs"
@@ -62,6 +64,13 @@ export const DASHBOARD_VIEWS: DashboardView[] = [
     heading: "Weight",
     description: "Weigh-ins and body measurements.",
     icon: Scale,
+  },
+  {
+    id: "sleep",
+    label: "Sleep",
+    heading: "Sleep",
+    description: "Scores and hours, night by night.",
+    icon: Moon,
   },
   {
     id: "journal",
