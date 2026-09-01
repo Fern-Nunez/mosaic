@@ -1,5 +1,7 @@
 import Image from "next/image";
 import "./explain.css";
+import Reveal from "@/components/web/reveal/reveal";
+import ReadingReveal from "@/components/web/reveal/readingReveal";
 
 export default function Explain() {
   return (
@@ -7,11 +9,11 @@ export default function Explain() {
     <div className="explainContainer">
         <div className="explainSectionContainer">
             <div className="explainSection">
-                <div className="explainTextContainer">
-                    <h2>Does your spending show up in what you eat?</h2>
-                    <p>Money and nutrition side by side — see when tight-budget weeks and takeout weeks line up.</p>
-                </div>
-                <div className="explainSectionImage">
+                <Reveal className="explainTextContainer">
+                    <h2>See what your weight was actually responding to.</h2>
+                    <p>Training and calories on the same timeline — the month it moved has a cause, and causes repeat.</p>
+                </Reveal>
+                <Reveal className="explainSectionImage" delay={0.45}>
                     <Image
                         src="/images/homepage/placeholder.jpg"
                         alt="Spending and nutrition shown side by side"
@@ -19,15 +21,15 @@ export default function Explain() {
                         height={478}
                         className="explainImage"
                     />
-                </div>
+                </Reveal>
             </div>
 
             <div className="explainSectionMid">
-                <div className="explainTextContainer">
-                    <h2>Watch your food, training, and mood move together.</h2>
-                    <p>Money and nutrition side by side — see when tight-budget weeks and takeout weeks line up.</p>
-                </div>
-                <div className="explainSectionImage">
+                <Reveal className="explainTextContainer">
+                    <h2>Watch your food and your mood move together.</h2>
+                    <p>Meals and journal entries side by side — the days you felt worst usually have something in common.</p>
+                </Reveal>
+                <Reveal className="explainSectionImage" delay={0.45}>
                     <Image
                         src="/images/homepage/placeholder.jpg"
                         alt="Spending and nutrition shown side by side"
@@ -35,15 +37,15 @@ export default function Explain() {
                         height={478}
                         className="explainImage"
                     />
-                </div>               
+                </Reveal>               
             </div>
 
             <div className="explainSection">
-                <div className="explainTextContainer">
+                <Reveal className="explainTextContainer">
                     <h2>Find out where your habits really come from.</h2>
                     <p>Line your habits up against your mood and mornings to see what's actually driving them.</p>
-                </div>
-                <div className="explainSectionImage">
+                </Reveal>
+                <Reveal className="explainSectionImage" delay={0.45}>
                     <Image
                         src="/images/homepage/placeholder.jpg"
                         alt="Spending and nutrition shown side by side"
@@ -51,12 +53,12 @@ export default function Explain() {
                         height={478}
                         className="explainImage"
                     />
-                </div>              
+                </Reveal>              
             </div>
         </div>
 
         <div className="finalExplain">
-            <p>Every entry is one more dot on the canvas. Day by day the picture fills in — your habits, your progress, your growth — until you can finally see how far you've come.</p>
+            <ReadingReveal>Every entry is one more dot on the canvas. Day by day the picture fills in — your habits, your progress, your growth — until you can finally see how far you've come.</ReadingReveal>
         </div>
     </div>
     </>

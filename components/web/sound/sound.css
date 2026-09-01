@@ -1,0 +1,42 @@
+.soundToggle {
+  position: fixed;
+  right: clamp(1rem, 2vw, 2rem);
+  bottom: clamp(1rem, 2vw, 2rem);
+  z-index: 500;
+
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  background: rgba(23, 23, 23, 0.72);
+  backdrop-filter: blur(10px);
+  color: rgba(255, 255, 255, 0.72);
+
+  cursor: pointer;
+  transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.soundToggle svg {
+  width: 20px;
+  height: 20px;
+}
+
+.soundToggle:hover {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.38);
+  background: rgba(23, 23, 23, 0.9);
+}
+
+.soundToggle:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+.soundToggle.is-on {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.32);
+}

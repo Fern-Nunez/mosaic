@@ -1,0 +1,73 @@
+/* Scoped to /test/scroll. */
+
+.scrollRoot {
+  background: #171717;
+  color: #fff;
+}
+
+.scrollIntro,
+.scrollOutro {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.scrollIntro p {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.9rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* Pinned for the length of the scroll; the canvas fills it. */
+.scrollStage {
+  position: relative;
+  height: 100svh;
+  overflow: hidden;
+}
+
+.scrollCanvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Both copy blocks occupy the same grid cell, so swapping one for the
+   other cannot move the layout. */
+.scrollCopy {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  align-content: start;
+  padding: clamp(1.5rem, 3vw, 4rem);
+}
+
+.scrollBlock {
+  grid-area: 1 / 1;
+  max-width: 60ch;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.scrollBlockSecond {
+  opacity: 0;
+}
+
+.scrollReadout {
+  position: absolute;
+  left: 50%;
+  bottom: 1.25rem;
+  transform: translateX(-50%);
+  z-index: 2;
+  margin: 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.4);
+}

@@ -1,0 +1,38 @@
+/* Full-screen hold. Painted in the server markup so the page is never
+   visible before it — see the note in about the root layout. */
+
+.loader {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #000;
+  pointer-events: auto;
+}
+
+/* Top bar: 2px, fills left to right. */
+.loaderBar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #ffffff;
+  transform: scaleX(0);
+  transform-origin: left center;
+  will-change: transform;
+}
+
+/* Bottom-left count. No percent sign. */
+.loaderCount {
+  position: absolute;
+  left: clamp(1.25rem, 3vw, 4rem);
+  bottom: clamp(1rem, 3vw, 3.5rem);
+  font-size: clamp(3.5rem, 9vw, 8rem);
+  font-weight: 500;
+  line-height: 1;
+  color: #ffffff;
+  opacity: 0.18;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  user-select: none;
+}

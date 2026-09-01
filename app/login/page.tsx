@@ -9,6 +9,8 @@ import { login, signup, type AuthState } from "./actions"
 import "../auth.css"
 
 const REDUCED_MOTION = "(prefers-reduced-motion: reduce)"
+/* matches the breakpoint in auth.css where the picture side appears */
+const DESKTOP = "(min-width: 1024px)"
 
 type Mode = "login" | "signup"
 
@@ -29,6 +31,19 @@ export default function LoginPage() {
   const pageRef = useRef<HTMLElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const hasMounted = useRef(false)
+
+  /* the video is a 40MB asset behind a desktop-only panel. display:none on
+     the parent does not stop the download, so keep it out of the DOM until
+     the breakpoint actually matches. */
+  const [showVideo, setShowVideo] = useState(false)
+
+  useEffect(() => {
+    const mq = window.matchMedia(DESKTOP)
+    const sync = () => setShowVideo(mq.matches)
+    sync()
+    mq.addEventListener("change", sync)
+    return () => mq.removeEventListener("change", sync)
+  }, [])
 
   /* entrance — only the card's contents animate. The picture is left
      alone on purpose: these pages remount on every navigation, so
@@ -203,17 +218,25 @@ export default function LoginPage() {
         </div>
       </section>
 
-      {/* decorative — swap the src for whatever image you want */}
+      {/* decorative — silent, looping, non-interactive background */}
       <aside className="loginImageSide">
-        <Image
-          src="/images/homepage/placeholder.jpg"
-          alt=""
-          fill
-          className="loginImage"
-          sizes="50vw"
-          priority
-        />
+        {showVideo && (
+          <video
+            className="loginVideo"
+            src="/images/homepage/mosaic.mp4"
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="auto"
+            disablePictureInPicture
+            controlsList="nodownload noplaybackrate noremoteplayback"
+            tabIndex={-1}
+            aria-hidden="true"
+          />
+        )}
       </aside>
+
     </main>
   )
 }

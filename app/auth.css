@@ -224,12 +224,37 @@
 
     .loginImageSide {
         display: block;
-        position: relative;     /* next/image fill anchors to this */
-        overflow: hidden;
+        position: relative;
+        /* Inset the panel from the page edges so the rounded corners read as
+           a card rather than a clipped bleed. */
+        padding: clamp(0.75rem, 1.4vw, 1.5rem);
     }
 
-    .loginImage {
+    /* The source is 2048x1080, so at any panel size up to that it is
+       downscaled and stays sharp. Sizing the element in CSS (rather than
+       letting the intrinsic video size leak out) is what keeps cover from
+       stretching a scaled-up frame. */
+    .loginVideo {
+        display: block;
+        width: 100%;
+        height: 100%;
         object-fit: cover;
+        border-radius: clamp(0.75rem, 1.2vw, 1.25rem);
+        /* Safari ignores border-radius on a video's painted frames without
+           its own clipping context. */
+        overflow: hidden;
+        -webkit-mask-image: -webkit-radial-gradient(white, black);
+        /* no controls, and nothing to click, right-click or scrub */
+        pointer-events: none;
+        -webkit-user-select: none;
+        user-select: none;
+    }
+
+    /* Safari/iOS still paint a play button on some inline videos */
+    .loginVideo::-webkit-media-controls,
+    .loginVideo::-webkit-media-controls-start-playback-button {
+        display: none !important;
+        -webkit-appearance: none;
     }
 }
 

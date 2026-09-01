@@ -1,0 +1,17 @@
+/* Sized by whatever wraps it. Give the parent a height, or position this
+   absolutely inside a relative parent — it fills its container either way. */
+
+.glassShards {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  /* Never intercept clicks on the content in front of it. */
+  pointer-events: none;
+}
+
+.glassShards canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
