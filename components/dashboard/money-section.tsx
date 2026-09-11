@@ -517,7 +517,7 @@ export function MoneySection({
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="flex min-h-[calc(100dvh-11.5rem)] flex-col gap-4">
       <Card>
         <CardHeader>
           <CardTitle>Income vs. expenses</CardTitle>
@@ -545,7 +545,8 @@ export function MoneySection({
         </CardContent>
       </Card>
 
-      <Card>
+      {/* Fills whatever height the income chart leaves. */}
+      <Card className="flex-1">
         <CardHeader>
           <CardTitle>Spending by category</CardTitle>
           <CardDescription>
@@ -555,14 +556,17 @@ export function MoneySection({
             {periodToggle}
           </CardAction>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-1 flex-col">
           {categories.length === 0 ? (
-            <p className="flex h-64 items-center justify-center text-sm text-muted-foreground">
+            <p className="flex min-h-64 flex-1 items-center justify-center text-sm text-muted-foreground">
               No expenses logged{" "}
               {period === "this" ? "this month" : "last month"}.
             </p>
           ) : (
-            <ChartContainer config={categoryConfig} className="h-64 w-full">
+            <ChartContainer
+              config={categoryConfig}
+              className="aspect-auto min-h-64 w-full flex-1"
+            >
               <PieChart>
                 <ChartTooltip
                   content={
@@ -587,7 +591,8 @@ export function MoneySection({
                   data={categories}
                   dataKey="total"
                   nameKey="category"
-                  innerRadius={50}
+                  // Relative, so the ring keeps its shape as the chart grows.
+                  innerRadius="50%"
                   strokeWidth={2}
                   labelLine={false}
                   label={({ percent }) =>
