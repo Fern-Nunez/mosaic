@@ -303,7 +303,7 @@ export default async function DashboardPage() {
             accountsLastMonth={accountActivity(transactionRows, accountRows, 1)}
             subscriptions={subscriptionRows}
             subsMonthly={subsMonthly}
-            recent={transactionRows.slice(0, 10)}
+            recent={transactionRows.slice(0, 30)}
           />
         ),
         nutrition: (
