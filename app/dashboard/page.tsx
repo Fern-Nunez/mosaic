@@ -2,6 +2,7 @@ import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { BookOpen, Dumbbell, Scale, Utensils, Wallet } from "lucide-react"
 
+import { ActivityHeatmap } from "@/components/dashboard/activity-heatmap"
 import { DashboardSections } from "@/components/dashboard/dashboard-sections"
 import { GymSection } from "@/components/dashboard/gym-section"
 import { HabitsSection } from "@/components/dashboard/habits-section"
@@ -237,6 +238,14 @@ export default async function DashboardPage() {
   const series = weightSeries(weightRows)
   const change = weightChange(series)
   const mood = latestMood(journalRows)
+  const sourceRows = {
+    weight: weightRows,
+    sleep: sleepRows,
+    nutrition: nutritionRows,
+    gym: gymRows,
+    transactions: transactionRows,
+    journal: journalRows,
+  }
 
   return (
     <DashboardSections
@@ -285,16 +294,9 @@ export default async function DashboardPage() {
               />
             </div>
 
-            <OverlayChart
-              rows={{
-                weight: weightRows,
-                sleep: sleepRows,
-                nutrition: nutritionRows,
-                gym: gymRows,
-                transactions: transactionRows,
-                journal: journalRows,
-              }}
-            />
+            <ActivityHeatmap rows={sourceRows} />
+
+            <OverlayChart rows={sourceRows} />
           </div>
         ),
         // Keyed by workspace so sections holding client state (journal
