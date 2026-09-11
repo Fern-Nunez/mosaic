@@ -173,18 +173,23 @@ function daysUntil(iso: string): number {
   return Math.round((target - today.getTime()) / 86_400_000)
 }
 
+// How close a due date has to be before it turns red.
+const DUE_SOON_DAYS = 3
+
+// "Due Sep 14", red once it's within DUE_SOON_DAYS (or already passed).
 function relativeDueLabel(iso: string): { text: string; tone: string } {
-  const days = daysUntil(iso)
-  if (days < 0) {
-    return {
-      text: `${Math.abs(days)}d overdue`,
-      tone: "text-red-600 dark:text-red-400",
-    }
+  const [y, m, d] = iso.split("-").map(Number)
+  const date = new Date(y, m - 1, d).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  })
+  return {
+    text: `Due ${date}`,
+    tone:
+      daysUntil(iso) <= DUE_SOON_DAYS
+        ? "text-red-600 dark:text-red-400"
+        : "text-muted-foreground",
   }
-  if (days === 0) return { text: "Due today", tone: "text-amber-600 dark:text-amber-400" }
-  if (days === 1) return { text: "Due tomorrow", tone: "text-amber-600 dark:text-amber-400" }
-  if (days <= 7) return { text: `in ${days}d`, tone: "text-amber-600 dark:text-amber-400" }
-  return { text: `in ${days}d`, tone: "text-muted-foreground" }
 }
 
 // "Today" / "Yesterday" / "Oct 12" for a transaction's date column.
@@ -411,7 +416,12 @@ export function MoneySection({
                           </div>
                           <p className="truncate text-xs text-muted-foreground">
                             {s.category ?? humanize(s.billing_cycle)}
-                            {due ? ` · ${due.text}` : ""}
+                            {due && (
+                              <>
+                                {" · "}
+                                <span className={due.tone}>{due.text}</span>
+                              </>
+                            )}
                           </p>
                         </div>
                         <div className="shrink-0 text-right">
