@@ -2,14 +2,19 @@
 
 import * as React from "react"
 import {
+  Area,
   CartesianGrid,
-  Line,
-  LineChart,
+  ComposedChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
+  type TooltipContentProps,
 } from "recharts"
+import type {
+  NameType,
+  ValueType,
+} from "recharts/types/component/DefaultTooltipContent"
 
 import { chartData, SERIES, seriesMeta, type SeriesId, type SourceRows } from "@/lib/series"
 import { cn } from "@/lib/utils"
@@ -20,13 +25,172 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 const RANGES = [
-  { days: 30, label: "30d" },
-  { days: 90, label: "90d" },
-  { days: 180, label: "6m" },
-  { days: 365, label: "1y" },
+  { value: 30, label: "30d" },
+  { value: 90, label: "90d" },
+  { value: 180, label: "6m" },
+  { value: 365, label: "1y" },
 ]
+
+const SMOOTHING = [
+  { value: 1, label: "Off" },
+  { value: 7, label: "7d" },
+  { value: 14, label: "14d" },
+]
+
+const NONE = "none"
+
+const compact = new Intl.NumberFormat("en-US", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+})
+
+/** "2026-07-16" parsed as a local date — a bare ISO date is UTC midnight. */
+function localDate(key: string) {
+  return new Date(`${key}T00:00`)
+}
+
+function formatValue(id: SeriesId, value: number) {
+  const meta = seriesMeta(id)
+  const n = value.toLocaleString("en-US", {
+    maximumFractionDigits: meta.decimals,
+    minimumFractionDigits: meta.decimals,
+  })
+  if (meta.unit === "$") return `$${n}`
+  return meta.unit ? `${n}${meta.unit}` : n
+}
+
+function Segmented({
+  options,
+  value,
+  onChange,
+  label,
+}: {
+  options: { value: number; label: string }[]
+  value: number
+  onChange: (value: number) => void
+  label: string
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label={label}
+      className="flex items-center gap-0.5 rounded-lg border bg-background/40 p-0.5"
+    >
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          role="radio"
+          aria-checked={value === o.value}
+          onClick={() => onChange(o.value)}
+          className={cn(
+            "rounded-md px-2.5 py-1 text-xs transition-colors",
+            value === o.value
+              ? "bg-foreground text-background"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function SeriesSelect({
+  value,
+  onChange,
+  allowNone,
+  label,
+}: {
+  value: SeriesId | typeof NONE
+  onChange: (value: SeriesId | typeof NONE) => void
+  allowNone?: boolean
+  label: string
+}) {
+  return (
+    <Select
+      value={value}
+      onValueChange={(v) => {
+        if (v) onChange(v as SeriesId | typeof NONE)
+      }}
+    >
+      <SelectTrigger aria-label={label} className="min-w-0 flex-1 sm:w-44 sm:flex-none">
+        <SelectValue>
+          {(v: string) =>
+            v === NONE ? (
+              <span className="text-muted-foreground">Nothing</span>
+            ) : (
+              <>
+                <span
+                  className="size-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: seriesMeta(v as SeriesId).color }}
+                />
+                {seriesMeta(v as SeriesId).label}
+              </>
+            )
+          }
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        {allowNone && <SelectItem value={NONE}>Nothing</SelectItem>}
+        {SERIES.map((s) => (
+          <SelectItem key={s.id} value={s.id}>
+            <span
+              className="size-2 shrink-0 rounded-full"
+              style={{ backgroundColor: s.color }}
+            />
+            {s.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
+
+function ChartTooltip({ active, payload, label }: TooltipContentProps<ValueType, NameType>) {
+  if (!active || !payload?.length) return null
+  return (
+    <div className="min-w-36 rounded-lg border bg-popover/95 px-3 py-2 text-xs shadow-xl backdrop-blur">
+      <p className="mb-1.5 font-medium">
+        {localDate(String(label)).toLocaleDateString(undefined, {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+        })}
+      </p>
+      <ul className="grid gap-1">
+        {payload.map((p) => {
+          const id = p.dataKey as SeriesId
+          const meta = seriesMeta(id)
+          return (
+            <li key={id} className="flex items-center justify-between gap-4">
+              <span className="flex items-center gap-1.5 text-muted-foreground">
+                <span
+                  className="size-2 rounded-full"
+                  style={{ backgroundColor: meta.color }}
+                />
+                {meta.label}
+              </span>
+              <span className="font-medium tabular-nums">
+                {p.value == null ? "—" : formatValue(id, Number(p.value))}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
 
 /**
  * Any two tracked things, on one timeline.
@@ -39,215 +203,199 @@ const RANGES = [
  * Two is therefore the hard limit — a third series has no axis to live on.
  */
 export function OverlayChart({ rows }: { rows: SourceRows }) {
-  const [selected, setSelected] = React.useState<SeriesId[]>([
-    "weight",
-    "calories",
-  ])
+  const [left, setLeft] = React.useState<SeriesId>("weight")
+  const [right, setRight] = React.useState<SeriesId | typeof NONE>("calories")
   const [days, setDays] = React.useState(90)
   const [smoothing, setSmoothing] = React.useState(7)
+  const id = React.useId()
+
+  const selected = React.useMemo(
+    () => (right === NONE ? [left] : [left, right]),
+    [left, right]
+  )
 
   const data = React.useMemo(
     () => chartData(selected, rows, days, smoothing),
     [selected, rows, days, smoothing]
   )
 
-  // Newest selection wins, so clicking a third swaps out the older of the two
-  // rather than being silently ignored.
-  const toggle = (id: SeriesId) => {
-    setSelected((cur) => {
-      if (cur.includes(id)) return cur.filter((x) => x !== id)
-      if (cur.length < 2) return [...cur, id]
-      return [cur[1], id]
-    })
+  // Picking what the other side already shows swaps them, so the two
+  // dropdowns can never end up plotting the same thing twice.
+  const pickLeft = (v: SeriesId | typeof NONE) => {
+    if (v === NONE) return
+    if (v === right) setRight(left)
+    setLeft(v)
+  }
+  const pickRight = (v: SeriesId | typeof NONE) => {
+    if (v === left) {
+      if (right === NONE) return
+      setLeft(right)
+    }
+    setRight(v)
   }
 
-  const [left, right] = selected
-  const leftMeta = left ? seriesMeta(left) : null
-  const rightMeta = right ? seriesMeta(right) : null
-
-  const hasAny = data.some((d) =>
-    selected.some((id) => d[id] != null)
-  )
+  const leftMeta = seriesMeta(left)
+  const rightMeta = right === NONE ? null : seriesMeta(right)
+  const hasAny = data.some((d) => selected.some((s) => d[s] != null))
 
   return (
-    <Card className="flex min-h-0 flex-1 flex-col">
-      <CardHeader className="gap-3">
+    <Card>
+      <CardHeader className="gap-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
+          <div className="grid gap-1">
             <CardTitle>Compare</CardTitle>
             <CardDescription>
-              Put any two things on the same timeline and see whether they move
-              together.
+              See whether two things move together.
             </CardDescription>
           </div>
-
-          <div className="flex items-center gap-1 rounded-md border p-0.5">
-            {RANGES.map((r) => (
-              <button
-                key={r.days}
-                type="button"
-                onClick={() => setDays(r.days)}
-                className={cn(
-                  "rounded px-2 py-1 text-xs transition-colors",
-                  days === r.days
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
+          <Segmented
+            label="Date range"
+            options={RANGES}
+            value={days}
+            onChange={setDays}
+          />
         </div>
 
-        <div className="flex flex-wrap gap-1.5">
-          {SERIES.map((s) => {
-            const on = selected.includes(s.id)
-            return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => toggle(s.id)}
-                aria-pressed={on}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors",
-                  on
-                    ? "border-transparent text-background"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-                style={on ? { backgroundColor: s.color } : undefined}
-              >
-                <span
-                  className="size-2 rounded-full"
-                  style={{ backgroundColor: on ? "currentColor" : s.color }}
-                />
-                {s.label}
-              </button>
-            )
-          })}
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <SeriesSelect label="First series" value={left} onChange={pickLeft} />
+          <span className="text-muted-foreground">vs</span>
+          <SeriesSelect
+            label="Second series"
+            value={right}
+            onChange={pickRight}
+            allowNone
+          />
         </div>
       </CardHeader>
 
-      <CardContent className="flex min-h-0 flex-1 flex-col gap-3">
-        <div className="min-h-[220px] w-full flex-1">
+      <CardContent className="grid gap-4">
+        <div className="h-64 w-full sm:h-80">
           {hasAny ? (
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={data} margin={{ left: 4, right: 4, top: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border" />
+              <ComposedChart data={data} margin={{ left: 0, right: 0, top: 8, bottom: 0 }}>
+                <defs>
+                  {[leftMeta, rightMeta].map(
+                    (m) =>
+                      m && (
+                        <linearGradient
+                          key={m.id}
+                          id={`${id}-${m.id}`}
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop offset="0%" stopColor={m.color} stopOpacity={0.25} />
+                          <stop offset="100%" stopColor={m.color} stopOpacity={0} />
+                        </linearGradient>
+                      )
+                  )}
+                </defs>
+                <CartesianGrid vertical={false} stroke="var(--border)" />
                 <XAxis
                   dataKey="date"
                   tickLine={false}
                   axisLine={false}
-                  minTickGap={32}
+                  minTickGap={40}
+                  tickMargin={8}
+                  tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
                   tickFormatter={(v: string) =>
-                    new Date(v).toLocaleDateString(undefined, {
+                    localDate(v).toLocaleDateString(undefined, {
                       month: "short",
                       day: "numeric",
                     })
                   }
-                  className="text-xs"
                 />
-                {leftMeta && (
-                  <YAxis
-                    yAxisId="left"
-                    tickLine={false}
-                    axisLine={false}
-                    width={44}
-                    domain={["auto", "auto"]}
-                    stroke={leftMeta.color}
-                    className="text-xs"
-                  />
-                )}
-                {rightMeta && (
-                  <YAxis
-                    yAxisId="right"
-                    orientation="right"
-                    tickLine={false}
-                    axisLine={false}
-                    width={44}
-                    domain={["auto", "auto"]}
-                    stroke={rightMeta.color}
-                    className="text-xs"
-                  />
-                )}
+                <YAxis
+                  yAxisId="left"
+                  tickLine={false}
+                  axisLine={false}
+                  width={40}
+                  tickCount={5}
+                  domain={["auto", "auto"]}
+                  tick={{ fill: leftMeta.color, fontSize: 11 }}
+                  tickFormatter={(v: number) => compact.format(v)}
+                />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  hide={!rightMeta}
+                  tickLine={false}
+                  axisLine={false}
+                  width={40}
+                  tickCount={5}
+                  domain={["auto", "auto"]}
+                  tick={{ fill: rightMeta?.color, fontSize: 11 }}
+                  tickFormatter={(v: number) => compact.format(v)}
+                />
                 <Tooltip
-                  contentStyle={{
-                    background: "var(--popover)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 8,
-                    fontSize: 12,
-                  }}
-                  labelFormatter={(v) =>
-                    new Date(String(v)).toLocaleDateString(undefined, {
-                      weekday: "short",
-                      month: "short",
-                      day: "numeric",
-                    })
-                  }
-                  formatter={(value, name) => {
-                    const meta = seriesMeta(name as SeriesId)
-                    const n = Number(value)
-                    return [
-                      `${meta.unit === "$" ? "$" : ""}${n.toFixed(meta.decimals)}${
-                        meta.unit && meta.unit !== "$" ? meta.unit : ""
-                      }`,
-                      meta.label,
-                    ]
-                  }}
+                  content={ChartTooltip}
+                  cursor={{ stroke: "var(--muted-foreground)", strokeDasharray: "3 3" }}
                 />
-                {left && leftMeta && (
-                  <Line
-                    yAxisId="left"
-                    type="monotone"
-                    dataKey={left}
-                    stroke={leftMeta.color}
-                    strokeWidth={2}
-                    dot={false}
-                    // Logging has gaps; joining across them beats a broken line.
-                    connectNulls
-                  />
-                )}
-                {right && rightMeta && (
-                  <Line
+                <Area
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey={left}
+                  stroke={leftMeta.color}
+                  strokeWidth={2}
+                  fill={`url(#${id}-${left})`}
+                  dot={false}
+                  activeDot={{ r: 4, strokeWidth: 0 }}
+                  // Logging has gaps; joining across them beats a broken line.
+                  connectNulls
+                  isAnimationActive={false}
+                />
+                {rightMeta && (
+                  <Area
                     yAxisId="right"
                     type="monotone"
-                    dataKey={right}
+                    dataKey={rightMeta.id}
                     stroke={rightMeta.color}
                     strokeWidth={2}
+                    fill={`url(#${id}-${rightMeta.id})`}
                     dot={false}
+                    activeDot={{ r: 4, strokeWidth: 0 }}
                     connectNulls
+                    isAnimationActive={false}
                   />
                 )}
-              </LineChart>
+              </ComposedChart>
             </ResponsiveContainer>
           ) : (
             <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">
-              {selected.length === 0
-                ? "Pick something to plot."
-                : "Nothing logged for this range yet."}
+              Nothing logged for this range yet.
             </div>
           )}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-          <span>
-            {leftMeta && rightMeta
-              ? `${leftMeta.label} on the left, ${rightMeta.label} on the right.`
-              : "Pick a second thing to compare against."}
-          </span>
-
-          <label className="flex items-center gap-2">
-            Smoothing
-            <select
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span className="flex items-center gap-1.5">
+              <span
+                className="h-0.5 w-3 rounded-full"
+                style={{ backgroundColor: leftMeta.color }}
+              />
+              {leftMeta.label} · left axis
+            </span>
+            {rightMeta && (
+              <span className="flex items-center gap-1.5">
+                <span
+                  className="h-0.5 w-3 rounded-full"
+                  style={{ backgroundColor: rightMeta.color }}
+                />
+                {rightMeta.label} · right axis
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <span>Smoothing</span>
+            <Segmented
+              label="Smoothing"
+              options={SMOOTHING}
               value={smoothing}
-              onChange={(e) => setSmoothing(Number(e.target.value))}
-              className="rounded border bg-transparent px-1.5 py-0.5"
-            >
-              <option value={1}>None</option>
-              <option value={7}>7 day</option>
-              <option value={14}>14 day</option>
-            </select>
-          </label>
+              onChange={setSmoothing}
+            />
+          </div>
         </div>
       </CardContent>
     </Card>
