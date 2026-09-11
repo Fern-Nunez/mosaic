@@ -173,6 +173,28 @@ function daysUntil(iso: string): number {
   return Math.round((target - today.getTime()) / 86_400_000)
 }
 
+/**
+ * Card payments recur monthly, but payment_due_date is only ever the date
+ * that was entered. Treat its day of the month as the due day and return the
+ * next one from today, so an old "Aug 15" reads as the upcoming "Sep 15".
+ * Short months clamp: a due day of 31 lands on Sep 30.
+ */
+function nextMonthlyDue(iso: string): string {
+  const day = Number(iso.split("-")[2])
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  for (let offset = 0; offset < 2; offset++) {
+    const y = today.getFullYear()
+    const m = today.getMonth() + offset
+    const last = new Date(y, m + 1, 0).getDate()
+    const candidate = new Date(y, m, Math.min(day, last))
+    if (candidate >= today) {
+      return `${candidate.getFullYear()}-${String(candidate.getMonth() + 1).padStart(2, "0")}-${String(candidate.getDate()).padStart(2, "0")}`
+    }
+  }
+  return iso
+}
+
 // How close a due date has to be before it turns red.
 const DUE_SOON_DAYS = 3
 
@@ -294,7 +316,7 @@ export function MoneySection({
                       ? Math.min(100, (Number(a.credit_used) / a.credit_limit) * 100)
                       : null
                   const due = a.payment_due_date
-                    ? relativeDueLabel(a.payment_due_date)
+                    ? relativeDueLabel(nextMonthlyDue(a.payment_due_date))
                     : null
                   return (
                     <li key={a.id} className="space-y-1.5">
