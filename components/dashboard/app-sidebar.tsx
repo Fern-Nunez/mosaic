@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useSearchParams } from "next/navigation"
-import { LogOut } from "lucide-react"
+import { ChevronRight, LogOut } from "lucide-react"
 
 import { signout } from "@/app/login/actions"
 import { SettingsDialog } from "@/components/dashboard/settings-dialog"
@@ -52,11 +52,20 @@ export function AppSidebar({ userEmail }: { userEmail: string }) {
             <SidebarMenu>
               {DASHBOARD_VIEWS.map((view) => {
                 const href = viewHref(view.id)
+                const isActive = view.id === activeView.id
                 return (
                   <SidebarMenuItem key={view.id}>
+                    {/* Glowing marker pinned to the sidebar's left edge. */}
+                    {isActive && (
+                      <span
+                        aria-hidden
+                        className="pointer-events-none absolute top-1/2 -left-2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-primary shadow-[0_0_12px_1px_var(--primary)]"
+                      />
+                    )}
                     <SidebarMenuButton
-                      isActive={view.id === activeView.id}
+                      isActive={isActive}
                       tooltip={view.label}
+                      className="data-active:bg-linear-to-r data-active:from-white/10 data-active:to-white/[0.03] data-active:shadow-[inset_0_1px_0_rgb(255_255_255/0.08),0_0_0_1px_rgb(255_255_255/0.06)]"
                       render={
                         <a
                           href={href}
@@ -66,6 +75,9 @@ export function AppSidebar({ userEmail }: { userEmail: string }) {
                     >
                       <view.icon />
                       <span>{view.label}</span>
+                      {isActive && (
+                        <ChevronRight className="ml-auto text-sidebar-foreground/50 group-data-[collapsible=icon]:hidden" />
+                      )}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 )
