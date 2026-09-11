@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -48,72 +49,6 @@ const weightConfig = {
   weight: { label: "Weight", color: "#10b981" },
 } satisfies ChartConfig
 
-// The optional body-measurement fields, each with a color identity so the
-// "Latest measurements" grid reads as a set of colored chips rather than a
-// flat table. Weight itself gets the violet accent (matching the overview).
-type MeasureKey = "weight" | "body_fat" | "waist" | "chest" | "arms" | "legs"
-
-const MEASURES: {
-  key: MeasureKey
-  label: string
-  suffix: (unit: string) => string
-  chip: string
-}[] = [
-  {
-    key: "weight",
-    label: "Weight",
-    suffix: (u) => ` ${u}`.trimEnd(),
-    chip: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
-  },
-  {
-    key: "body_fat",
-    label: "Body fat",
-    suffix: () => "%",
-    chip: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
-  },
-  {
-    key: "waist",
-    label: "Waist",
-    suffix: () => '"',
-    chip: "bg-sky-500/15 text-sky-600 dark:text-sky-400",
-  },
-  {
-    key: "chest",
-    label: "Chest",
-    suffix: () => '"',
-    chip: "bg-violet-500/15 text-violet-600 dark:text-violet-400",
-  },
-  {
-    key: "arms",
-    label: "Arms",
-    suffix: () => '"',
-    chip: "bg-rose-500/15 text-rose-600 dark:text-rose-400",
-  },
-  {
-    key: "legs",
-    label: "Legs",
-    suffix: () => '"',
-    chip: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400",
-  },
-]
-
-function Measurement({
-  label,
-  value,
-  chip,
-}: {
-  label: string
-  value: string
-  chip: string
-}) {
-  return (
-    <div className={cn("rounded-lg p-3", chip)}>
-      <p className="text-xs opacity-80">{label}</p>
-      <p className="text-lg font-semibold tabular-nums">{value}</p>
-    </div>
-  )
-}
-
 // "Sat, Jul 19" for a YYYY-MM-DD key, parsed in local time.
 function entryDate(key: string): string {
   const [y, m, d] = key.split("-").map(Number)
@@ -125,6 +60,9 @@ function entryDate(key: string): string {
 }
 
 type HistoryEntry = { row: WeightRow; delta: number | null }
+
+// Only the most recent few; the chart covers the rest.
+const HISTORY_SHOWN = 3
 
 // Newest-first list of weigh-ins, each with the change in weight from the
 // previous chronological entry (null for the very first weigh-in).
@@ -154,35 +92,31 @@ export function WeightSection({
   // Rows arrive oldest-first from the server; keep them that way on insert so
   // the chart and "latest" stay correct without a full reload.
   const series = React.useMemo(() => weightSeries(rows), [rows])
-  const history = React.useMemo(() => buildHistory(rows), [rows])
+  const history = React.useMemo(
+    () => buildHistory(rows).slice(0, HISTORY_SHOWN),
+    [rows]
+  )
   const latest = rows.length > 0 ? rows[rows.length - 1] : null
   const unit = latest?.unit && latest.unit !== "unknown" ? latest.unit : ""
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="font-heading text-lg font-semibold">Weight</h2>
-          <p className="text-sm text-muted-foreground">
-            Track your weigh-ins and measurements.
-          </p>
-        </div>
-        <LogWeightDialog
-          userId={userId}
-          defaultUnit={unit || "lbs"}
-          onLogged={(row) =>
-            setRows((prev) =>
-              [...prev, row].sort((a, b) => a.date.localeCompare(b.date))
-            )
-          }
-        />
-      </div>
-
       {/* Full-width trend chart */}
       <Card className="overflow-hidden">
         <CardHeader>
           <CardTitle>Body weight</CardTitle>
           <CardDescription>All logged weigh-ins</CardDescription>
+          <CardAction>
+            <LogWeightDialog
+              userId={userId}
+              defaultUnit={unit || "lbs"}
+              onLogged={(row) =>
+                setRows((prev) =>
+                  [...prev, row].sort((a, b) => a.date.localeCompare(b.date))
+                )
+              }
+            />
+          </CardAction>
         </CardHeader>
         <CardContent>
           {series.length === 0 ? (
@@ -235,46 +169,12 @@ export function WeightSection({
         </CardContent>
       </Card>
 
-      {/* Full-width latest measurements, chips left-to-right */}
+      {/* The last few weigh-ins, newest on the left */}
       <Card>
         <CardHeader>
-          <CardTitle>Latest measurements</CardTitle>
+          <CardTitle>Recent weigh-ins</CardTitle>
           <CardDescription>
-            {latest ? `Logged ${entryDate(latest.date)}` : "Nothing logged yet"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {latest ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-              {MEASURES.map((m) => {
-                const value = latest[m.key]
-                if (value == null) return null
-                return (
-                  <Measurement
-                    key={m.key}
-                    label={m.label}
-                    chip={m.chip}
-                    value={`${Number(value)}${m.suffix(unit)}`}
-                  />
-                )
-              })}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Log a weigh-in to see it here.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Full-width history — each weigh-in as a card, newest on the left */}
-      <Card>
-        <CardHeader>
-          <CardTitle>History</CardTitle>
-          <CardDescription>
-            {history.length === 0
-              ? "Nothing logged yet"
-              : `${history.length} ${history.length === 1 ? "weigh-in" : "weigh-ins"}, newest first`}
+            {history.length === 0 ? "Nothing logged yet" : "Newest first"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -283,7 +183,7 @@ export function WeightSection({
               Your weigh-ins will appear here.
             </p>
           ) : (
-            <div className="flex gap-3 overflow-x-auto pb-2">
+            <div className="grid gap-3 sm:grid-cols-3">
               {history.map(({ row, delta }) => (
                 <HistoryCard key={row.id} row={row} delta={delta} unit={unit} />
               ))}
@@ -326,7 +226,7 @@ function HistoryCard({
   const Icon = trend.Icon
 
   return (
-    <div className="flex w-40 shrink-0 flex-col gap-2 rounded-xl border bg-gradient-to-b from-emerald-500/[0.06] to-transparent p-3">
+    <div className="flex flex-col gap-2 rounded-xl border bg-gradient-to-b from-emerald-500/[0.06] to-transparent p-3">
       <p className="text-xs font-medium text-muted-foreground">
         {entryDate(row.date)}
       </p>
