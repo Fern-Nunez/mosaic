@@ -5,6 +5,7 @@ import * as React from "react"
 import { useHabits } from "@/components/dashboard/habits-context"
 import type { SourceRows } from "@/lib/series"
 import { toDateKey, todayKey } from "@/lib/stats"
+import { cn } from "@/lib/utils"
 import {
   Card,
   CardContent,
@@ -13,7 +14,8 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 
-const WEEKS = 26
+const WEEKS_WIDE = 26
+const WEEKS_NARROW = 13
 
 // Pointy-top hexagons. Columns are weeks, rows are weekdays; odd rows shift
 // half a hex right so the grid packs into a honeycomb.
@@ -22,7 +24,6 @@ const HEX_W = Math.sqrt(3) * R
 const ROW_H = 1.5 * R
 const PAD_LEFT = 26 // weekday labels
 const PAD_TOP = 16 // month labels
-const WIDTH = PAD_LEFT + WEEKS * HEX_W + HEX_W / 2 + 2
 const HEIGHT = PAD_TOP + 6 * ROW_H + 2 * R + 2
 
 const TRACKERS = [
@@ -53,6 +54,19 @@ function hexPoints(cx: number, cy: number, r: number) {
   return pts.join(" ")
 }
 
+/** 13 weeks on phones so each hex stays big enough to tap. */
+function useWeeks() {
+  const [weeks, setWeeks] = React.useState(WEEKS_WIDE)
+  React.useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)")
+    const update = () => setWeeks(mq.matches ? WEEKS_NARROW : WEEKS_WIDE)
+    update()
+    mq.addEventListener("change", update)
+    return () => mq.removeEventListener("change", update)
+  }, [])
+  return weeks
+}
+
 type Day = {
   key: string
   col: number
@@ -72,6 +86,8 @@ type Day = {
 export function ActivityHeatmap({ rows }: { rows: SourceRows }) {
   const { completions } = useHabits()
   const [hovered, setHovered] = React.useState<Day | null>(null)
+  const weeks = useWeeks()
+  const WIDTH = PAD_LEFT + weeks * HEX_W + HEX_W / 2 + 2
 
   const { days, months } = React.useMemo(() => {
     const byTracker = new Map<string, Set<string>>()
@@ -83,15 +99,15 @@ export function ActivityHeatmap({ rows }: { rows: SourceRows }) {
       habitsByDay.set(c.date, (habitsByDay.get(c.date) ?? 0) + 1)
     }
 
-    // Start on the Sunday WEEKS-1 weeks before this week's Sunday.
+    // Start on the Sunday weeks-1 weeks before this week's Sunday.
     const today = new Date()
     const start = new Date(today)
-    start.setDate(today.getDate() - today.getDay() - (WEEKS - 1) * 7)
+    start.setDate(today.getDate() - today.getDay() - (weeks - 1) * 7)
     const todayStr = todayKey()
 
     const days: Day[] = []
     const months: { col: number; label: string }[] = []
-    for (let col = 0; col < WEEKS; col++) {
+    for (let col = 0; col < weeks; col++) {
       for (let row = 0; row < 7; row++) {
         const d = new Date(start)
         d.setDate(start.getDate() + col * 7 + row)
@@ -124,17 +140,18 @@ export function ActivityHeatmap({ rows }: { rows: SourceRows }) {
     // A month that starts mid-grid would crowd the first label; drop it.
     if (months.length > 1 && months[1].col - months[0].col < 3) months.shift()
     return { days, months }
-  }, [rows, completions])
+  }, [rows, completions, weeks])
 
   const activeDays = days.filter((d) => d.count > 0).length
 
   return (
-    <Card>
+    <Card className="overflow-visible">
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
         <div className="grid gap-1">
           <CardTitle>Activity</CardTitle>
           <CardDescription>
-            Every day for the last six months, brighter the more you tracked.
+            Every day for the last {weeks === WEEKS_WIDE ? "six" : "three"}{" "}
+            months, brighter the more you tracked.
           </CardDescription>
         </div>
         <span className="flex items-center gap-2 rounded-full border bg-background/60 px-3 py-1 text-xs text-muted-foreground">
@@ -149,7 +166,7 @@ export function ActivityHeatmap({ rows }: { rows: SourceRows }) {
             viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
             className="block h-auto w-full"
             role="img"
-            aria-label={`Activity heatmap: ${activeDays} active days in the last ${WEEKS} weeks`}
+            aria-label={`Activity heatmap: ${activeDays} active days in the last ${weeks} weeks`}
             onPointerLeave={() => setHovered(null)}
           >
             {months.map((m) => (
@@ -177,29 +194,13 @@ export function ActivityHeatmap({ rows }: { rows: SourceRows }) {
               </text>
             ))}
 
-            {/* Dashed crosshair through the hovered hex, as in a map view. */}
-            {hovered && (
-              <g
-                className="pointer-events-none stroke-foreground/25"
-                strokeWidth={0.5}
-                strokeDasharray="2 2"
-              >
-                <line x1={PAD_LEFT} x2={WIDTH} y1={hovered.cy} y2={hovered.cy} />
-                <line x1={hovered.cx} x2={hovered.cx} y1={PAD_TOP} y2={HEIGHT} />
-              </g>
-            )}
-
             {days.map((d) => {
               const level = Math.min(d.count, LEVELS.length - 1)
-              const isHovered = hovered?.key === d.key
               return (
                 <polygon
                   key={d.key}
                   points={hexPoints(d.cx, d.cy, R - 1)}
                   fill={LEVELS[level].fill}
-                  stroke={isHovered ? "white" : "none"}
-                  strokeWidth={1.2}
-                  className="cursor-pointer transition-[fill]"
                   onPointerEnter={() => setHovered(d)}
                 />
               )
@@ -208,7 +209,15 @@ export function ActivityHeatmap({ rows }: { rows: SourceRows }) {
 
           {hovered && (
             <div
-              className="pointer-events-none absolute z-10 w-44 -translate-x-1/2 translate-y-3 rounded-lg border bg-popover/95 p-3 text-xs shadow-xl backdrop-blur"
+              className={cn(
+                "pointer-events-none absolute z-20 w-44 rounded-lg border bg-popover/95 p-3 text-xs shadow-xl backdrop-blur",
+                hovered.row < 3 ? "translate-y-3" : "-translate-y-[calc(100%+0.75rem)]",
+                hovered.cx / WIDTH < 0.25
+                  ? "-translate-x-4"
+                  : hovered.cx / WIDTH > 0.75
+                    ? "-translate-x-[calc(100%-1rem)]"
+                    : "-translate-x-1/2"
+              )}
               style={{
                 left: `${(hovered.cx / WIDTH) * 100}%`,
                 top: `${(hovered.cy / HEIGHT) * 100}%`,
