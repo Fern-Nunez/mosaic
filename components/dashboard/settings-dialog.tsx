@@ -3,6 +3,8 @@
 import * as React from "react"
 import { KeyRound, Settings } from "lucide-react"
 
+import { useNavPrefs } from "@/components/dashboard/nav-prefs"
+import { DASHBOARD_VIEWS } from "@/components/dashboard/views"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -14,7 +16,9 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Separator } from "@/components/ui/separator"
 import { SidebarMenuButton } from "@/components/ui/sidebar"
+import { Switch } from "@/components/ui/switch"
 
 export function SettingsDialog() {
   const [open, setOpen] = React.useState(false)
@@ -100,10 +104,20 @@ export function SettingsDialog() {
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
-            Your OpenAI API key powers meal photo analysis and is billed to
-            your OpenAI account.
+            Choose what&apos;s in your sidebar, and manage your OpenAI key.
           </DialogDescription>
         </DialogHeader>
+
+        <SidebarSettings />
+
+        <Separator />
+
+        <div className="space-y-1">
+          <h3 className="text-sm font-medium">OpenAI API key</h3>
+          <p className="text-xs text-muted-foreground">
+            Powers meal photo analysis and is billed to your OpenAI account.
+          </p>
+        </div>
 
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
@@ -161,5 +175,48 @@ export function SettingsDialog() {
         )}
       </DialogContent>
     </Dialog>
+  )
+}
+
+/** On/off switch per sidebar page. Overview always stays. */
+function SidebarSettings() {
+  const { hiddenViews, setViewHidden } = useNavPrefs()
+  const [error, setError] = React.useState<string | null>(null)
+
+  return (
+    <section className="space-y-3">
+      <div className="space-y-1">
+        <h3 className="text-sm font-medium">Sidebar</h3>
+        <p className="text-xs text-muted-foreground">
+          Turn off pages you don&apos;t use. Nothing is deleted — switch one
+          back on and it&apos;s all still there.
+        </p>
+      </div>
+      <ul className="divide-y rounded-md border">
+        {DASHBOARD_VIEWS.filter((v) => v.id !== "overview").map((view) => {
+          const id = `nav-toggle-${view.id}`
+          return (
+            <li key={view.id} className="flex items-center gap-3 px-3 py-2">
+              <view.icon className="size-4 text-muted-foreground" />
+              <Label htmlFor={id} className="flex-1 font-normal">
+                {view.label}
+              </Label>
+              <Switch
+                id={id}
+                checked={!hiddenViews.includes(view.id)}
+                onCheckedChange={async (checked) => {
+                  setError(await setViewHidden(view.id, !checked))
+                }}
+              />
+            </li>
+          )
+        })}
+      </ul>
+      {error && (
+        <p className="rounded-md border border-destructive/50 bg-destructive/10 p-2 text-xs text-destructive">
+          {error}
+        </p>
+      )}
+    </section>
   )
 }

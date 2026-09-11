@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation"
 import { ChevronRight, LogOut } from "lucide-react"
 
 import { signout } from "@/app/login/actions"
+import { useNavPrefs } from "@/components/dashboard/nav-prefs"
 import { SettingsDialog } from "@/components/dashboard/settings-dialog"
 import {
   DASHBOARD_VIEWS,
@@ -40,6 +41,8 @@ export function AppSidebar({ userEmail }: { userEmail: string }) {
   const activeView = resolveView(searchParams.get("view"))
   const activeSubPage = resolveSubPage(activeView.id, searchParams.get("tab"))
   const { isMobile, setOpenMobile } = useSidebar()
+  const { hiddenViews } = useNavPrefs()
+  const shownViews = DASHBOARD_VIEWS.filter((v) => !hiddenViews.includes(v.id))
 
   function navigate(event: React.MouseEvent<HTMLAnchorElement>, href: string) {
     if (handleViewClick(event, href) && isMobile) {
@@ -58,7 +61,7 @@ export function AppSidebar({ userEmail }: { userEmail: string }) {
           <SidebarGroupLabel>Tracking</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {DASHBOARD_VIEWS.map((view) => {
+              {shownViews.map((view) => {
                 const href = viewHref(view.id)
                 const isActive = view.id === activeView.id
                 const subPages = SUB_PAGES[view.id]

@@ -4,11 +4,13 @@ import { redirect } from "next/navigation"
 import { AppSidebar } from "@/components/dashboard/app-sidebar"
 import { HabitDots } from "@/components/dashboard/habit-dots"
 import { HabitsProvider } from "@/components/dashboard/habits-context"
+import { NavPrefsProvider } from "@/components/dashboard/nav-prefs"
 import {
   ScratchPanel,
   ScratchPanelProvider,
   ScratchPanelTrigger,
 } from "@/components/dashboard/scratch-panel"
+import { DASHBOARD_VIEWS, type DashboardView } from "@/components/dashboard/views"
 import { WorkspaceProvider } from "@/components/dashboard/workspace-context"
 import { DEFAULT_WORKSPACES, type Workspace } from "@/lib/workspaces"
 import { Separator } from "@/components/ui/separator"
@@ -52,6 +54,19 @@ export default async function DashboardLayout({
       ? (settingsData.workspaces as Workspace[])
       : DEFAULT_WORKSPACES
 
+  // Sidebar pages switched off in Settings. Its own query so a missing
+  // column (migration not run) only loses this, not the dashboards list.
+  const { data: navData } = await supabase
+    .from("user_settings")
+    .select("hidden_views")
+    .eq("user_id", user.id)
+    .maybeSingle()
+  const hiddenViews = (
+    Array.isArray(navData?.hidden_views) ? navData.hidden_views : []
+  ).filter((id): id is DashboardView["id"] =>
+    DASHBOARD_VIEWS.some((v) => v.id === id && v.id !== "overview")
+  )
+
   const cookieWorkspace = cookieStore.get("mosaic-workspace")?.value
   const activeId = workspaces.some((ws) => ws.id === cookieWorkspace)
     ? cookieWorkspace!
@@ -63,6 +78,7 @@ export default async function DashboardLayout({
       initialWorkspaces={workspaces}
       initialActiveId={activeId}
     >
+      <NavPrefsProvider userId={user.id} initialHidden={hiddenViews}>
       <HabitsProvider userId={user.id}>
       <SidebarProvider
         defaultOpen={defaultOpen}
@@ -97,6 +113,7 @@ export default async function DashboardLayout({
         </ScratchPanelProvider>
       </SidebarProvider>
       </HabitsProvider>
+      </NavPrefsProvider>
     </WorkspaceProvider>
   )
 }
