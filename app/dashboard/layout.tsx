@@ -64,7 +64,10 @@ export default async function DashboardLayout({
       initialActiveId={activeId}
     >
       <HabitsProvider userId={user.id}>
-      <SidebarProvider defaultOpen={defaultOpen} className="dark">
+      <SidebarProvider
+        defaultOpen={defaultOpen}
+        className="dark bg-background text-foreground"
+      >
         <ScratchPanelProvider defaultOpen={scratchOpen} userId={user.id}>
           <AppSidebar userEmail={user.email ?? ""} />
           <SidebarInset className="bg-background">
