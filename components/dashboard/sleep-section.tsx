@@ -70,7 +70,7 @@ export function SleepSection({
   userId: string
 }) {
   const supabase = React.useMemo(() => createClient(), [])
-  const workspace = useWorkspace()
+  const { active } = useWorkspace()
 
   const [entries, setEntries] = React.useState<SleepRow[]>(rows)
   const [open, setOpen] = React.useState(false)
@@ -120,7 +120,7 @@ export function SleepSection({
       .upsert(
         {
           user_id: userId,
-          workspace,
+          workspace: active.id,
           date,
           score: scoreValue,
           hours: hoursValue,

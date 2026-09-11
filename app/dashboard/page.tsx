@@ -163,7 +163,7 @@ export default async function DashboardPage() {
     supabase
       .from("gym_weight")
       .select(
-        "id, date, workout_name, exercise, sets, reps, weight, unit, personal_record, notes"
+        "id, date, workout_class, exercise, sets, reps, weight, unit, personal_record, notes"
       )
       .eq("user_id", user.id)
       .eq("workspace", workspace)

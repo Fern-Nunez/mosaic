@@ -192,7 +192,7 @@ export function GymSection({
                         {g.date}
                       </TableCell>
                       <TableCell className="max-w-40 truncate">
-                        {g.workout_name ?? "—"}
+                        {g.workout_class ?? "—"}
                       </TableCell>
                       <TableCell>
                         {g.exercise}
@@ -226,7 +226,7 @@ export function GymSection({
 
 type Draft = {
   date: string
-  workout_name: string
+  workout_class: string
   exercise: string
   sets: string
   reps: string
@@ -239,7 +239,7 @@ type Draft = {
 function emptyDraft(): Draft {
   return {
     date: todayKey(),
-    workout_name: "",
+    workout_class: "",
     exercise: "",
     sets: "",
     reps: "",
@@ -316,7 +316,7 @@ function LogLiftDialog({
         user_id: userId,
         workspace: active.id,
         date: draft.date,
-        workout_name: draft.workout_name.trim() || null,
+        workout_class: draft.workout_class.trim() || null,
         exercise,
         sets,
         reps,
@@ -326,7 +326,7 @@ function LogLiftDialog({
         notes: draft.notes.trim() || null,
       })
       .select(
-        "id, date, workout_name, exercise, sets, reps, weight, unit, personal_record, notes"
+        "id, date, workout_class, exercise, sets, reps, weight, unit, personal_record, notes"
       )
       .single()
     setBusy(false)
@@ -379,9 +379,9 @@ function LogLiftDialog({
               <Input
                 id="lift-workout"
                 placeholder="e.g. Push day"
-                value={draft.workout_name}
+                value={draft.workout_class}
                 onChange={(e) =>
-                  setDraft((d) => ({ ...d, workout_name: e.target.value }))
+                  setDraft((d) => ({ ...d, workout_class: e.target.value }))
                 }
               />
             </div>

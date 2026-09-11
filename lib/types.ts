@@ -68,7 +68,7 @@ export type NutritionRow = {
 export type GymRow = {
   id: string
   date: string
-  workout_name: string | null
+  workout_class: string | null
   exercise: string
   sets: number | null
   reps: number | null
