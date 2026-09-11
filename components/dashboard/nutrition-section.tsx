@@ -247,7 +247,7 @@ export function NutritionSection({
         <MealSnap userId={userId} estimateLevel={estimateLevel} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+      <div className="grid gap-4 md:grid-cols-2">
       <Card>
         <CardHeader>
           <CardTitle>Calories</CardTitle>
@@ -265,6 +265,25 @@ export function NutritionSection({
           />
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Protein</CardTitle>
+          <CardDescription>
+            {isWeek ? "Last 7 days" : selectedLabel} against your{" "}
+            {isWeek ? "weekly" : "daily"} goal
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-1 items-center">
+          <PillGauge
+            value={Math.round(eaten.protein)}
+            max={goals.protein * targetMultiplier}
+            unit="g"
+            label="Protein"
+          />
+        </CardContent>
+      </Card>
+      </div>
 
       <Card className="overflow-hidden">
         <CardHeader>
@@ -329,7 +348,6 @@ export function NutritionSection({
           })}
         </CardContent>
       </Card>
-      </div>
 
       <Card>
         <CardHeader>
