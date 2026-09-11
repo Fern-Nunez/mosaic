@@ -1,6 +1,6 @@
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
-import { BookOpen, Dumbbell, Scale, Utensils, Wallet } from "lucide-react"
+import { Dumbbell, Scale, Utensils, Wallet } from "lucide-react"
 
 import { ActivityHeatmap } from "@/components/dashboard/activity-heatmap"
 import { DashboardSections } from "@/components/dashboard/dashboard-sections"
@@ -23,7 +23,6 @@ import {
   DEFAULT_ESTIMATE_LEVEL,
   DEFAULT_NUTRITION_GOALS,
   lastNDayKeys,
-  latestMood,
   monthlyMoney,
   moneyTotalsThisMonth,
   nutritionToday,
@@ -75,23 +74,23 @@ function StatCard({
   accent: StatAccent
 }) {
   return (
-    <Card>
-      <CardContent className="flex items-center gap-3">
-        <div
-          className={cn(
-            "flex size-10 shrink-0 items-center justify-center rounded-lg",
-            STAT_ACCENTS[accent]
-          )}
-        >
-          <Icon className="size-4.5" />
+    <Card size="sm">
+      <CardContent className="flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground">{label}</p>
+          <div
+            className={cn(
+              "flex size-7 shrink-0 items-center justify-center rounded-md",
+              STAT_ACCENTS[accent]
+            )}
+          >
+            <Icon className="size-3.5" />
+          </div>
         </div>
-        <div className="min-w-0">
-          <p className="truncate text-xs text-muted-foreground">{label}</p>
-          <p className="truncate text-xl font-semibold tabular-nums">{value}</p>
-          {hint && (
-            <p className="truncate text-xs text-muted-foreground">{hint}</p>
-          )}
-        </div>
+        <p className="text-2xl font-semibold tracking-tight tabular-nums">
+          {value}
+        </p>
+        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
       </CardContent>
     </Card>
   )
@@ -237,7 +236,6 @@ export default async function DashboardPage() {
   const weekWorkouts = workoutsThisWeek(gymRows)
   const series = weightSeries(weightRows)
   const change = weightChange(series)
-  const mood = latestMood(journalRows)
   const sourceRows = {
     weight: weightRows,
     sleep: sleepRows,
@@ -252,7 +250,7 @@ export default async function DashboardPage() {
       views={{
         overview: (
           <div className="flex h-full flex-col gap-6">
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+            <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
               <StatCard
                 icon={Wallet}
                 accent="emerald"
@@ -284,13 +282,6 @@ export default async function DashboardPage() {
                     ? `${change.change > 0 ? "+" : ""}${change.change} last 30 days`
                     : "No weigh-ins yet"
                 }
-              />
-              <StatCard
-                icon={BookOpen}
-                accent="rose"
-                label="Last mood"
-                value={mood ? mood[0].toUpperCase() + mood.slice(1) : "—"}
-                hint={`${journalRows.length} total entries`}
               />
             </div>
 
