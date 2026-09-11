@@ -23,6 +23,7 @@ import {
 import type { NutritionRow } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { MealSnap } from "@/components/dashboard/meal-snap"
+import { PillGauge } from "@/components/dashboard/pill-gauge"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -246,6 +247,25 @@ export function NutritionSection({
         <MealSnap userId={userId} estimateLevel={estimateLevel} />
       </div>
 
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+      <Card>
+        <CardHeader>
+          <CardTitle>Calories</CardTitle>
+          <CardDescription>
+            {isWeek ? "Last 7 days" : selectedLabel} against your{" "}
+            {isWeek ? "weekly" : "daily"} goal
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-1 items-center">
+          <PillGauge
+            value={Math.round(eaten.calories)}
+            max={goals.calories * targetMultiplier}
+            unit="cal"
+            label="Calories"
+          />
+        </CardContent>
+      </Card>
+
       <Card className="overflow-hidden">
         <CardHeader>
           <CardTitle>How much you&apos;ve eaten</CardTitle>
@@ -309,6 +329,7 @@ export function NutritionSection({
           })}
         </CardContent>
       </Card>
+      </div>
 
       <Card>
         <CardHeader>
