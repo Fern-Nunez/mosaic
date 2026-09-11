@@ -143,3 +143,10 @@ export type SleepRow = {
   wake_time: string | null
   notes: string | null
 }
+
+export type RunRow = {
+  id: string
+  date: string
+  distance_miles: number
+  duration_seconds: number
+}

@@ -4,13 +4,16 @@ import { Dumbbell, Scale, Utensils, Wallet } from "lucide-react"
 
 import { ActivityHeatmap } from "@/components/dashboard/activity-heatmap"
 import { DashboardSections } from "@/components/dashboard/dashboard-sections"
+import { GymPages } from "@/components/dashboard/gym-pages"
 import { GymSection } from "@/components/dashboard/gym-section"
 import { HabitsSection } from "@/components/dashboard/habits-section"
 import { JobsSection } from "@/components/dashboard/jobs-section"
 import { JournalSection } from "@/components/dashboard/journal-section"
+import { LeaderboardSection } from "@/components/dashboard/leaderboard-section"
 import { MoneySection } from "@/components/dashboard/money-section"
 import { NutritionSection } from "@/components/dashboard/nutrition-section"
 import { OverlayChart } from "@/components/dashboard/overlay-chart"
+import { RunningSection } from "@/components/dashboard/running-section"
 import { SleepSection } from "@/components/dashboard/sleep-section"
 import { WeightSection } from "@/components/dashboard/weight-section"
 import { Card, CardContent } from "@/components/ui/card"
@@ -38,6 +41,7 @@ import type {
   JobApplicationRow,
   JournalRow,
   NutritionRow,
+  RunRow,
   SleepRow,
   SubscriptionRow,
   TransactionRow,
@@ -127,6 +131,7 @@ export default async function DashboardPage() {
     weight,
     jobs,
     sleep,
+    runs,
   ] = await Promise.all([
     supabase
       .from("transactions")
@@ -194,6 +199,12 @@ export default async function DashboardPage() {
       .eq("user_id", user.id)
       .eq("workspace", workspace)
       .order("date", { ascending: false }),
+    supabase
+      .from("runs")
+      .select("id, date, distance_miles, duration_seconds")
+      .eq("user_id", user.id)
+      .eq("workspace", workspace)
+      .order("date", { ascending: false }),
   ])
 
   // Daily nutrition goals live on user_settings so they sync across
@@ -229,6 +240,8 @@ export default async function DashboardPage() {
   // the dashboard still loads rather than erroring on a missing table.
   const sleepRows = (sleep.data ?? []) as SleepRow[]
   const jobRows = (jobs.data ?? []) as JobApplicationRow[]
+  // Empty until the running migration is applied.
+  const runRows = (runs.data ?? []) as RunRow[]
 
   const totals = moneyTotalsThisMonth(transactionRows)
   const subsMonthly = activeSubscriptionsMonthly(subscriptionRows)
@@ -318,7 +331,15 @@ export default async function DashboardPage() {
             userId={user.id}
           />
         ),
-        gym: <GymSection key={workspace} rows={gymRows} userId={user.id} />,
+        gym: (
+          <GymPages
+            lifts={<GymSection key={workspace} rows={gymRows} userId={user.id} />}
+            running={
+              <RunningSection key={workspace} rows={runRows} userId={user.id} />
+            }
+            leaderboard={<LeaderboardSection userId={user.id} />}
+          />
+        ),
         weight: (
           <WeightSection key={workspace} rows={weightRows} userId={user.id} />
         ),
