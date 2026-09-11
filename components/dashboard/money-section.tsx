@@ -585,54 +585,58 @@ export function MoneySection({
               {period === "this" ? "this month" : "last month"}.
             </p>
           ) : (
-            <ChartContainer
-              config={categoryConfig}
-              className="aspect-auto min-h-64 w-full flex-1"
-            >
-              <PieChart>
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      nameKey="category"
-                      formatter={(value, name) => {
-                        const total = categories.reduce(
-                          (sum, c) => sum + c.total,
-                          0
-                        )
-                        const num = Number(value)
-                        const pct = total > 0 ? (num / total) * 100 : 0
-                        return [
-                          `${usd.format(num)} · ${pct.toFixed(0)}%`,
-                          name,
-                        ]
-                      }}
-                    />
-                  }
-                />
-                <Pie
-                  data={categories}
-                  dataKey="total"
-                  nameKey="category"
-                  // Relative, so the ring keeps its shape as the chart grows.
-                  innerRadius="50%"
-                  strokeWidth={2}
-                  labelLine={false}
-                  label={({ percent }) =>
-                    typeof percent === "number" && percent > 0.04
-                      ? `${(percent * 100).toFixed(0)}%`
-                      : ""
-                  }
-                >
-                  {categories.map((c) => (
-                    <Cell key={c.category} fill={categoryColor(c.category)} />
-                  ))}
-                </Pie>
-                <ChartLegend
-                  content={<ChartLegendContent nameKey="category" />}
-                  className="flex-wrap"
-                />
-              </PieChart>
-            </ChartContainer>
+            // The chart sizes itself from its parent, and a flex-stretched box
+            // has no definite height to measure — so fill it absolutely.
+            <div className="relative min-h-64 flex-1">
+              <ChartContainer
+                config={categoryConfig}
+                className="absolute inset-0 aspect-auto"
+              >
+                <PieChart>
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        nameKey="category"
+                        formatter={(value, name) => {
+                          const total = categories.reduce(
+                            (sum, c) => sum + c.total,
+                            0
+                          )
+                          const num = Number(value)
+                          const pct = total > 0 ? (num / total) * 100 : 0
+                          return [
+                            `${usd.format(num)} · ${pct.toFixed(0)}%`,
+                            name,
+                          ]
+                        }}
+                      />
+                    }
+                  />
+                  <Pie
+                    data={categories}
+                    dataKey="total"
+                    nameKey="category"
+                    // Relative, so the ring keeps its shape as the chart grows.
+                    innerRadius="50%"
+                    strokeWidth={2}
+                    labelLine={false}
+                    label={({ percent }) =>
+                      typeof percent === "number" && percent > 0.04
+                        ? `${(percent * 100).toFixed(0)}%`
+                        : ""
+                    }
+                  >
+                    {categories.map((c) => (
+                      <Cell key={c.category} fill={categoryColor(c.category)} />
+                    ))}
+                  </Pie>
+                  <ChartLegend
+                    content={<ChartLegendContent nameKey="category" />}
+                    className="flex-wrap"
+                  />
+                </PieChart>
+              </ChartContainer>
+            </div>
           )}
         </CardContent>
       </Card>
