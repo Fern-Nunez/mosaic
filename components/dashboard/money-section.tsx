@@ -492,7 +492,6 @@ export function MoneySection({
                   {recent.map((t) => {
                     const Icon = categoryIcon(t.category)
                     const income = t.transaction_type === "income"
-                    const color = categoryColor(t.category ?? "Other")
                     return (
                       <li
                         key={t.id}
@@ -505,10 +504,7 @@ export function MoneySection({
                           <p className="truncate text-sm font-medium">
                             {t.description ?? t.category ?? "Transaction"}
                           </p>
-                          <p
-                            className="truncate text-xs font-medium"
-                            style={{ color }}
-                          >
+                          <p className="truncate text-xs text-muted-foreground">
                             {t.category ?? "Other"}
                           </p>
                         </div>
