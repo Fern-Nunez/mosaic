@@ -40,7 +40,7 @@ export function AppSidebar({ userEmail }: { userEmail: string }) {
   }
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" className="group-data-[side=left]:border-r-0">
       <SidebarHeader>
         <WorkspaceSwitcher />
       </SidebarHeader>
