@@ -12,7 +12,6 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
   Card,
-  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -101,22 +100,23 @@ export function WeightSection({
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex justify-end">
+        <LogWeightDialog
+          userId={userId}
+          defaultUnit={unit || "lbs"}
+          onLogged={(row) =>
+            setRows((prev) =>
+              [...prev, row].sort((a, b) => a.date.localeCompare(b.date))
+            )
+          }
+        />
+      </div>
+
       {/* Full-width trend chart */}
       <Card className="overflow-hidden">
         <CardHeader>
           <CardTitle>Body weight</CardTitle>
           <CardDescription>All logged weigh-ins</CardDescription>
-          <CardAction>
-            <LogWeightDialog
-              userId={userId}
-              defaultUnit={unit || "lbs"}
-              onLogged={(row) =>
-                setRows((prev) =>
-                  [...prev, row].sort((a, b) => a.date.localeCompare(b.date))
-                )
-              }
-            />
-          </CardAction>
         </CardHeader>
         <CardContent>
           {series.length === 0 ? (
@@ -364,7 +364,7 @@ function LogWeightDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger
         render={
-          <Button className="shrink-0 bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-sm hover:from-emerald-600 hover:to-green-700">
+          <Button className="shrink-0">
             <Plus className="size-4" />
             Log weigh-in
           </Button>
@@ -470,7 +470,6 @@ function LogWeightDialog({
             <Button
               type="submit"
               disabled={busy}
-              className="bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:from-emerald-600 hover:to-green-700"
             >
               {busy ? (
                 <>
