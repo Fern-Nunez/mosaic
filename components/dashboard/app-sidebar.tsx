@@ -9,10 +9,14 @@ import { SettingsDialog } from "@/components/dashboard/settings-dialog"
 import {
   DASHBOARD_VIEWS,
   handleViewClick,
+  MONEY_TABS,
+  moneyTabHref,
+  resolveMoneyTab,
   resolveView,
   viewHref,
 } from "@/components/dashboard/views"
 import { WorkspaceSwitcher } from "@/components/dashboard/workspace-switcher"
+import { cn } from "@/lib/utils"
 import {
   Sidebar,
   SidebarContent,
@@ -24,6 +28,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar"
@@ -31,6 +38,8 @@ import {
 export function AppSidebar({ userEmail }: { userEmail: string }) {
   const searchParams = useSearchParams()
   const activeView = resolveView(searchParams.get("view"))
+  const activeMoneyTab =
+    activeView.id === "money" ? resolveMoneyTab(searchParams.get("tab")) : null
   const { isMobile, setOpenMobile } = useSidebar()
 
   function navigate(event: React.MouseEvent<HTMLAnchorElement>, href: string) {
@@ -59,7 +68,7 @@ export function AppSidebar({ userEmail }: { userEmail: string }) {
                     {isActive && (
                       <span
                         aria-hidden
-                        className="pointer-events-none absolute top-1/2 -left-2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-primary shadow-[0_0_12px_1px_var(--primary)]"
+                        className="pointer-events-none absolute top-4 -left-2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-primary shadow-[0_0_12px_1px_var(--primary)]"
                       />
                     )}
                     <SidebarMenuButton
@@ -76,9 +85,36 @@ export function AppSidebar({ userEmail }: { userEmail: string }) {
                       <view.icon />
                       <span>{view.label}</span>
                       {isActive && (
-                        <ChevronRight className="ml-auto text-sidebar-foreground/50 group-data-[collapsible=icon]:hidden" />
+                        <ChevronRight
+                          className={cn(
+                            "ml-auto text-sidebar-foreground/50 transition-transform group-data-[collapsible=icon]:hidden",
+                            view.id === "money" && "rotate-90"
+                          )}
+                        />
                       )}
                     </SidebarMenuButton>
+
+                    {/* Money opens its sub-pages underneath while you're in it. */}
+                    {view.id === "money" && isActive && (
+                      <SidebarMenuSub className="mt-1">
+                        {MONEY_TABS.map((tab) => {
+                          const tabHref = moneyTabHref(tab.id)
+                          return (
+                            <SidebarMenuSubItem key={tab.id}>
+                              <SidebarMenuSubButton
+                                isActive={activeMoneyTab === tab.id}
+                                href={tabHref}
+                                onClick={(event) => navigate(event, tabHref)}
+                                className="text-sidebar-foreground/70 data-active:text-sidebar-foreground data-active:[&>svg]:text-primary"
+                              >
+                                <tab.icon />
+                                <span>{tab.label}</span>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          )
+                        })}
+                      </SidebarMenuSub>
+                    )}
                   </SidebarMenuItem>
                 )
               })}

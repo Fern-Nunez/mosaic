@@ -3,9 +3,12 @@ import {
   BookOpen,
   Briefcase,
   CircleDot,
+  CreditCard,
   Dumbbell,
   LayoutDashboard,
   Moon,
+  Receipt,
+  Repeat,
   Scale,
   Utensils,
   Wallet,
@@ -94,6 +97,44 @@ export const DASHBOARD_VIEWS: DashboardView[] = [
     icon: Briefcase,
   },
 ]
+
+/** Sub-pages of Money, listed under it in the sidebar. */
+export const MONEY_TABS = [
+  {
+    id: "accounts",
+    label: "Accounts & cards",
+    description: "Balances, credit usage, and activity.",
+    icon: CreditCard,
+  },
+  {
+    id: "subscriptions",
+    label: "Subscriptions",
+    description: "What renews, how often, and when.",
+    icon: Repeat,
+  },
+  {
+    id: "transactions",
+    label: "Recent transactions",
+    description: "Your latest account activity.",
+    icon: Receipt,
+  },
+] as const satisfies readonly {
+  id: string
+  label: string
+  description: string
+  icon: LucideIcon
+}[]
+
+export type MoneyTab = (typeof MONEY_TABS)[number]["id"]
+
+/** The Money sub-page in the URL, or null for the Money overview. */
+export function resolveMoneyTab(tab: string | null): MoneyTab | null {
+  return MONEY_TABS.find((t) => t.id === tab)?.id ?? null
+}
+
+export function moneyTabHref(tab: MoneyTab): string {
+  return `/dashboard?view=money&tab=${tab}`
+}
 
 export function resolveView(view: string | null): DashboardView {
   return DASHBOARD_VIEWS.find((v) => v.id === view) ?? DASHBOARD_VIEWS[0]
