@@ -6,10 +6,12 @@ import {
   CreditCard,
   Dumbbell,
   LayoutDashboard,
+  Footprints,
   Moon,
   Receipt,
   Repeat,
   Scale,
+  Trophy,
   Utensils,
   Wallet,
   type LucideIcon,
@@ -118,12 +120,7 @@ export const MONEY_TABS = [
     description: "Your latest account activity.",
     icon: Receipt,
   },
-] as const satisfies readonly {
-  id: string
-  label: string
-  description: string
-  icon: LucideIcon
-}[]
+] as const satisfies readonly SubPage[]
 
 export type MoneyTab = (typeof MONEY_TABS)[number]["id"]
 
@@ -134,6 +131,53 @@ export function resolveMoneyTab(tab: string | null): MoneyTab | null {
 
 export function moneyTabHref(tab: MoneyTab): string {
   return `/dashboard?view=money&tab=${tab}`
+}
+
+/** Sub-pages of Gym. The bare Gym view is your own lifts. */
+export const GYM_TABS = [
+  {
+    id: "running",
+    label: "Running",
+    description: "Runs, pace, and weekly mileage.",
+    icon: Footprints,
+  },
+  {
+    id: "leaderboard",
+    label: "Leaderboard",
+    description: "Share a code and see who's on top.",
+    icon: Trophy,
+  },
+] as const satisfies readonly SubPage[]
+
+export type GymTab = (typeof GYM_TABS)[number]["id"]
+
+export function resolveGymTab(tab: string | null): GymTab | null {
+  return GYM_TABS.find((t) => t.id === tab)?.id ?? null
+}
+
+type SubPage = {
+  id: string
+  label: string
+  description: string
+  icon: LucideIcon
+}
+
+/** Views that open sub-pages beneath them in the sidebar. */
+export const SUB_PAGES: Partial<Record<DashboardView["id"], readonly SubPage[]>> = {
+  money: MONEY_TABS,
+  gym: GYM_TABS,
+}
+
+/** The active sub-page for a view, or undefined on the view's main page. */
+export function resolveSubPage(
+  view: DashboardView["id"],
+  tab: string | null
+): SubPage | undefined {
+  return SUB_PAGES[view]?.find((t) => t.id === tab)
+}
+
+export function subPageHref(view: DashboardView["id"], tab: string): string {
+  return `/dashboard?view=${view}&tab=${tab}`
 }
 
 export function resolveView(view: string | null): DashboardView {

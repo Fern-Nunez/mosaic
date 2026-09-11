@@ -9,10 +9,10 @@ import { SettingsDialog } from "@/components/dashboard/settings-dialog"
 import {
   DASHBOARD_VIEWS,
   handleViewClick,
-  MONEY_TABS,
-  moneyTabHref,
-  resolveMoneyTab,
+  resolveSubPage,
   resolveView,
+  SUB_PAGES,
+  subPageHref,
   viewHref,
 } from "@/components/dashboard/views"
 import { WorkspaceSwitcher } from "@/components/dashboard/workspace-switcher"
@@ -38,8 +38,7 @@ import {
 export function AppSidebar({ userEmail }: { userEmail: string }) {
   const searchParams = useSearchParams()
   const activeView = resolveView(searchParams.get("view"))
-  const activeMoneyTab =
-    activeView.id === "money" ? resolveMoneyTab(searchParams.get("tab")) : null
+  const activeSubPage = resolveSubPage(activeView.id, searchParams.get("tab"))
   const { isMobile, setOpenMobile } = useSidebar()
 
   function navigate(event: React.MouseEvent<HTMLAnchorElement>, href: string) {
@@ -62,6 +61,7 @@ export function AppSidebar({ userEmail }: { userEmail: string }) {
               {DASHBOARD_VIEWS.map((view) => {
                 const href = viewHref(view.id)
                 const isActive = view.id === activeView.id
+                const subPages = SUB_PAGES[view.id]
                 return (
                   <SidebarMenuItem key={view.id}>
                     {/* Glowing marker pinned to the sidebar's left edge. */}
@@ -88,21 +88,21 @@ export function AppSidebar({ userEmail }: { userEmail: string }) {
                         <ChevronRight
                           className={cn(
                             "ml-auto text-sidebar-foreground/50 transition-transform group-data-[collapsible=icon]:hidden",
-                            view.id === "money" && "rotate-90"
+                            subPages && "rotate-90"
                           )}
                         />
                       )}
                     </SidebarMenuButton>
 
-                    {/* Money opens its sub-pages underneath while you're in it. */}
-                    {view.id === "money" && isActive && (
+                    {/* Sub-pages open underneath while you're in the view. */}
+                    {subPages && isActive && (
                       <SidebarMenuSub className="mt-1">
-                        {MONEY_TABS.map((tab) => {
-                          const tabHref = moneyTabHref(tab.id)
+                        {subPages.map((tab) => {
+                          const tabHref = subPageHref(view.id, tab.id)
                           return (
                             <SidebarMenuSubItem key={tab.id}>
                               <SidebarMenuSubButton
-                                isActive={activeMoneyTab === tab.id}
+                                isActive={activeSubPage?.id === tab.id}
                                 href={tabHref}
                                 onClick={(event) => navigate(event, tabHref)}
                                 className="text-sidebar-foreground/70 data-active:text-sidebar-foreground data-active:[&>svg]:text-primary"
