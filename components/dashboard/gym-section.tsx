@@ -344,7 +344,7 @@ function LogLiftDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger
         render={
-          <Button className="shrink-0 bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-sm hover:from-indigo-600 hover:to-violet-700">
+          <Button className="shrink-0">
             <Plus className="size-4" />
             Log lift
           </Button>
@@ -353,7 +353,7 @@ function LogLiftDialog({
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
+            <span className="flex size-8 items-center justify-center rounded-lg bg-primary/15 text-primary">
               <Dumbbell className="size-4.5" />
             </span>
             Log a lift
@@ -506,7 +506,6 @@ function LogLiftDialog({
             <Button
               type="submit"
               disabled={busy}
-              className="bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700"
             >
               {busy ? (
                 <>
