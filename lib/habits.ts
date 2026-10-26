@@ -77,6 +77,30 @@ export type Habit = {
   name: string
   /** Key into HABIT_ICONS; falls back to the first icon if unknown. */
   icon: string
+  /**
+   * Weekdays it's due, 0 = Sunday … 6 = Saturday. Null/empty = every day.
+   * (Needs the habits.days column; older rows have none.)
+   */
+  days?: number[] | null
+}
+
+export const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+
+/** Is this habit scheduled on the given "YYYY-MM-DD" day? */
+export function isDueOn(habit: Habit, day: string): boolean {
+  if (!habit.days || habit.days.length === 0 || habit.days.length === 7) return true
+  const [y, m, d] = day.split("-").map(Number)
+  return habit.days.includes(new Date(y, m - 1, d, 12).getDay())
+}
+
+/** "Every day", "Weekdays", "Mon, Wed, Fri"… */
+export function scheduleLabel(days: number[] | null | undefined): string {
+  if (!days || days.length === 0 || days.length === 7) return "Every day"
+  const sorted = [...days].sort()
+  if (sorted.join() === "1,2,3,4,5") return "Weekdays"
+  if (sorted.join() === "0,6") return "Weekends"
+  if (sorted.length === 1) return `Every ${["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][sorted[0]]}`
+  return sorted.map((d) => WEEKDAY_SHORT[d]).join(", ")
 }
 
 // A curated set to pick from when adding a habit. Keys are stored, so

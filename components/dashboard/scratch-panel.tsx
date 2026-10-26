@@ -28,6 +28,7 @@ import { createClient } from "@/lib/supabase/client"
 import { cn, uuid } from "@/lib/utils"
 
 type Todo = { id: string; text: string; done: boolean }
+type ScratchTab = "todos" | "notes"
 
 const NOTE_SAVE_DELAY_MS = 600
 const PANEL_COOKIE_NAME = "scratch_panel_state"
@@ -40,6 +41,10 @@ type ScratchPanelContextValue = {
   openMobile: boolean
   setOpenMobile: (open: boolean) => void
   toggle: () => void
+  tab: ScratchTab
+  setTab: (tab: ScratchTab) => void
+  /** Opens the panel (sheet on mobile) straight to a tab. */
+  openTo: (tab: ScratchTab) => void
   todos: Todo[]
   notes: string
   loadError: boolean
@@ -53,7 +58,7 @@ type ScratchPanelContextValue = {
 const ScratchPanelContext =
   React.createContext<ScratchPanelContextValue | null>(null)
 
-function useScratchPanel() {
+export function useScratchPanel() {
   const context = React.useContext(ScratchPanelContext)
   if (!context) {
     throw new Error(
@@ -92,6 +97,7 @@ export function ScratchPanelProvider({
   const supabase = React.useMemo(() => createClient(), [])
   const [open, setOpen] = React.useState(defaultOpen)
   const [openMobile, setOpenMobile] = React.useState(false)
+  const [tab, setTab] = React.useState<ScratchTab>("todos")
   const [todos, setTodos] = React.useState<Todo[]>([])
   const [notes, setNotesState] = React.useState("")
   const [loadError, setLoadError] = React.useState(false)
@@ -150,6 +156,17 @@ export function ScratchPanelProvider({
       openMobile,
       setOpenMobile,
       toggle,
+      tab,
+      setTab,
+      openTo: (next) => {
+        setTab(next)
+        if (isDesktop) {
+          document.cookie = `${PANEL_COOKIE_NAME}=true; path=/; max-age=${PANEL_COOKIE_MAX_AGE}`
+          setOpen(true)
+        } else {
+          setOpenMobile(true)
+        }
+      },
       todos,
       notes,
       loadError,
@@ -211,7 +228,7 @@ export function ScratchPanelProvider({
           .then(({ error }) => revertOnError(todos)(error))
       },
     }
-  }, [open, openMobile, toggle, todos, notes, loadError, supabase, userId, workspace])
+  }, [open, openMobile, toggle, tab, isDesktop, todos, notes, loadError, supabase, userId, workspace])
 
   return (
     <ScratchPanelContext.Provider value={value}>
@@ -285,6 +302,8 @@ function ScratchPanelContent() {
     toggleTodo,
     removeTodo,
     clearDone,
+    tab,
+    setTab,
   } = useScratchPanel()
   const [draft, setDraft] = React.useState("")
 
@@ -314,7 +333,10 @@ function ScratchPanelContent() {
         </p>
       )}
 
-      <Tabs defaultValue="todos" className="flex min-h-0 flex-1 flex-col">
+      <Tabs
+        value={tab}
+        onValueChange={(value) => setTab(value as ScratchTab)}
+        className="flex min-h-0 flex-1 flex-col">
         <TabsList className="w-full">
           <TabsTrigger value="todos">
             <ListTodo data-icon="inline-start" className="size-4" />

@@ -12,8 +12,11 @@ type HabitsContextValue = {
   completions: Completion[]
   /** True when the Supabase tables can't be read (migration not applied). */
   loadError: boolean
-  addHabit: (name: string, icon: string) => void
+  /** Resolves to an error message, or null on success. */
+  addHabit: (name: string, icon: string, days?: number[] | null) => Promise<string | null>
   removeHabit: (id: string) => void
+  /** Resolves to an error message, or null on success. Null days = every day. */
+  setHabitDays: (id: string, days: number[] | null) => Promise<string | null>
   toggleToday: (habitId: string) => void
 }
 
@@ -48,7 +51,9 @@ export function HabitsProvider({
     Promise.all([
       supabase
         .from("habits")
-        .select("id, name, icon, position")
+        // "*" so the optional `days` column comes along once it exists,
+        // without breaking anything before that migration is run.
+        .select("*")
         .eq("workspace", workspace)
         .order("position", { ascending: true }),
       supabase
@@ -68,6 +73,7 @@ export function HabitsProvider({
             id: row.id as string,
             name: row.name as string,
             icon: row.icon as string,
+            days: Array.isArray(row.days) ? (row.days as number[]) : null,
           }))
         )
         setCompletions(
@@ -88,16 +94,36 @@ export function HabitsProvider({
       habits,
       completions,
       loadError,
-      addHabit: (name, icon) => {
-        const habit: Habit = { id: uuid(), name, icon }
+      addHabit: async (name, icon, days) => {
+        const habit: Habit = { id: uuid(), name, icon, days: days ?? null }
         const position = habits.length
         setHabits([...habits, habit])
-        supabase
-          .from("habits")
-          .insert({ id: habit.id, name, icon, position, user_id: userId, workspace })
-          .then(({ error }) => {
-            if (error) setHabits(habits)
-          })
+        const { error } = await supabase.from("habits").insert({
+          id: habit.id,
+          name,
+          icon,
+          position,
+          user_id: userId,
+          workspace,
+          // Only sent for scheduled habits, so plain ones keep working
+          // even before the days column exists.
+          ...(days && days.length ? { days } : {}),
+        })
+        if (!error) return null
+        setHabits(habits)
+        return /days|schema cache|column/i.test(error.message)
+          ? "Repeating on specific days needs the habits SQL run in Supabase first."
+          : error.message
+      },
+      setHabitDays: async (id, days) => {
+        const prev = habits
+        setHabits(habits.map((h) => (h.id === id ? { ...h, days } : h)))
+        const { error } = await supabase.from("habits").update({ days }).eq("id", id)
+        if (!error) return null
+        setHabits(prev)
+        return /days|schema cache|column/i.test(error.message)
+          ? "Run the habits SQL in Supabase to set days."
+          : error.message
       },
       removeHabit: (id) => {
         const prevHabits = habits

@@ -52,6 +52,9 @@ const caladea = Caladea({
 export const metadata: Metadata = {
   title: "Mosaic",
   description: "Your life, in one picture all working together",
+  // Home-screen app on iPhone (needed for push notifications there).
+  appleWebApp: { capable: true, title: "Mosaic", statusBarStyle: "default" },
+  icons: { apple: "/icons/apple-touch-icon.png" },
 };
 
 export default function RootLayout({

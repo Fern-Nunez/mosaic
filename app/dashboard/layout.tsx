@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import { AppSidebar } from "@/components/dashboard/app-sidebar"
 import { HabitDots } from "@/components/dashboard/habit-dots"
 import { HabitsProvider } from "@/components/dashboard/habits-context"
+import { MobileTabBar } from "@/components/dashboard/mobile-tab-bar"
 import { NavPrefsProvider } from "@/components/dashboard/nav-prefs"
 import {
   ScratchPanel,
@@ -102,7 +103,8 @@ export default async function DashboardLayout({
               <ScratchPanelTrigger className="ml-auto" />
             </header>
             <div className="flex flex-1 items-start">
-              <div className="flex min-w-0 flex-1 flex-col self-stretch px-4 py-6">
+              {/* Extra bottom room on phones so the tab bar never covers content. */}
+              <div className="flex min-w-0 flex-1 flex-col self-stretch px-4 pt-6 pb-32 md:pb-6">
                 {children}
               </div>
             </div>
@@ -110,6 +112,7 @@ export default async function DashboardLayout({
           {/* Full-height right panel, a sibling of the main area so it
               spans the whole viewport like the left sidebar. */}
           <ScratchPanel />
+          <MobileTabBar />
         </ScratchPanelProvider>
       </SidebarProvider>
       </HabitsProvider>

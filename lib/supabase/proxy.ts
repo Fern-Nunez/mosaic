@@ -35,7 +35,13 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname === "/" ||
     request.nextUrl.pathname.startsWith("/login") ||
     request.nextUrl.pathname.startsWith("/auth") ||
-    request.nextUrl.pathname.startsWith("/forgot-password")
+    request.nextUrl.pathname.startsWith("/forgot-password") ||
+    // Fetched without a login cookie: the browser loads the manifest and
+    // service worker on its own, and the daily reminder job checks its own
+    // secret.
+    request.nextUrl.pathname === "/manifest.webmanifest" ||
+    request.nextUrl.pathname === "/sw.js" ||
+    request.nextUrl.pathname === "/api/reminders"
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()

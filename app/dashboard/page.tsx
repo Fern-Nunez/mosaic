@@ -15,6 +15,7 @@ import { NutritionSection } from "@/components/dashboard/nutrition-section"
 import { OverlayChart } from "@/components/dashboard/overlay-chart"
 import { RunningSection } from "@/components/dashboard/running-section"
 import { SleepSection } from "@/components/dashboard/sleep-section"
+import { TrendsIndex } from "@/components/dashboard/trends-index"
 import { WeightSection } from "@/components/dashboard/weight-section"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
@@ -355,6 +356,13 @@ export default async function DashboardPage() {
         ),
         habits: <HabitsSection key={workspace} />,
         jobs: <JobsSection key={workspace} jobs={jobRows} userId={user.id} />,
+        trends: <TrendsIndex />,
+        // Placeholder until the chat is built.
+        insights: (
+          <p className="text-sm text-muted-foreground">
+            The insights chat is coming soon.
+          </p>
+        ),
       }}
     />
   )

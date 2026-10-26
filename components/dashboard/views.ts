@@ -2,11 +2,13 @@ import type * as React from "react"
 import {
   BookOpen,
   Briefcase,
+  ChartNoAxesColumn,
   CircleDot,
   CreditCard,
   Dumbbell,
   LayoutDashboard,
   Footprints,
+  MessageSquareMore,
   Moon,
   Receipt,
   Repeat,
@@ -28,6 +30,8 @@ export type DashboardView = {
     | "journal"
     | "habits"
     | "jobs"
+    | "trends"
+    | "insights"
   label: string
   heading: string
   description: string
@@ -97,6 +101,27 @@ export const DASHBOARD_VIEWS: DashboardView[] = [
     heading: "Job applications",
     description: "Roles you've applied to and where each one stands.",
     icon: Briefcase,
+  },
+]
+
+/**
+ * Pages reached from the mobile tab bar only. Kept out of DASHBOARD_VIEWS so
+ * they don't show up in the sidebar or the Settings page toggles.
+ */
+export const TAB_VIEWS: DashboardView[] = [
+  {
+    id: "trends",
+    label: "Trends",
+    heading: "Your life, over time.",
+    description: "Every number you track, side by side.",
+    icon: ChartNoAxesColumn,
+  },
+  {
+    id: "insights",
+    label: "Insights",
+    heading: "Let’s look for some patterns.",
+    description: "Ask about anything you’ve logged.",
+    icon: MessageSquareMore,
   },
 ]
 
@@ -181,7 +206,11 @@ export function subPageHref(view: DashboardView["id"], tab: string): string {
 }
 
 export function resolveView(view: string | null): DashboardView {
-  return DASHBOARD_VIEWS.find((v) => v.id === view) ?? DASHBOARD_VIEWS[0]
+  return (
+    DASHBOARD_VIEWS.find((v) => v.id === view) ??
+    TAB_VIEWS.find((v) => v.id === view) ??
+    DASHBOARD_VIEWS[0]
+  )
 }
 
 export function viewHref(id: DashboardView["id"]): string {
