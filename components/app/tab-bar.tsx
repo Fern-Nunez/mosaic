@@ -152,7 +152,8 @@ export function TabBar({ userId }: { userId: string }) {
       {/* The bar. It sits under the dim layer, so it dims with the page. */}
       <nav
         aria-label="Main"
-        className="fixed inset-x-3 z-30 mx-auto flex h-[60px] max-w-[420px] drop-shadow-[0_2px_6px_rgb(0_0_0/0.08)]"
+        // Hidden while the phone keyboard is up (Insights sets data-keyboard).
+        className="fixed inset-x-3 z-30 mx-auto flex h-[60px] max-w-[420px] drop-shadow-[0_2px_6px_rgb(0_0_0/0.08)] in-data-[keyboard=open]:hidden"
         style={{ bottom: BAR_BOTTOM }}
       >
         {/* Two white halves joined by a notch the round button sits in. */}
@@ -190,7 +191,7 @@ export function TabBar({ userId }: { userId: string }) {
       {/* Above the dim layer: the quick-log grid and the round button, on
           the same footprint as the bar so the button lines up with the notch. */}
       <div
-        className="pointer-events-none fixed inset-x-3 z-50 mx-auto h-[60px] max-w-[420px]"
+        className="pointer-events-none fixed inset-x-3 z-50 mx-auto h-[60px] max-w-[420px] in-data-[keyboard=open]:hidden"
         style={{ bottom: BAR_BOTTOM }}
       >
         {/* Its bottom edge runs through the center of the round button. */}
