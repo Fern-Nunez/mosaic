@@ -27,7 +27,7 @@ export async function login(
   }
 
   revalidatePath("/", "layout")
-  redirect("/dashboard")
+  redirect("/app")
 }
 
 export async function signup(
@@ -48,7 +48,7 @@ export async function signup(
   // If email confirmation is disabled, a session is created immediately
   if (data.session) {
     revalidatePath("/", "layout")
-    redirect("/dashboard")
+    redirect("/app")
   }
 
   return { message: "Check your email for a confirmation link." }
@@ -102,7 +102,7 @@ export async function changePassword(
   }
 
   revalidatePath("/", "layout")
-  redirect("/dashboard")
+  redirect("/app")
 }
 
 export async function signout() {

@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { Camera, Check, Loader2, Repeat2, X } from "lucide-react"
+import { Camera, Check, Loader2, MessageSquareText, Repeat2, X } from "lucide-react"
 
 import {
   Choice,
@@ -18,7 +18,9 @@ import {
   toNumber,
 } from "@/components/app/log/fields"
 import { useHabits } from "@/components/dashboard/habits-context"
+import { usePrefs } from "@/components/app/prefs-context"
 import { TX_LABEL, type TxType } from "@/lib/app/money"
+import { supplementDue, supplementSchedule } from "@/lib/app/prefs"
 import { CARDIO, type CardioActivity } from "@/lib/app/workouts"
 import { scheduleLabel, WEEKDAY_SHORT } from "@/lib/habits"
 import { cn } from "@/lib/utils"
@@ -568,6 +570,10 @@ export function NutritionForm({ ctx }: FormProps) {
   const [preview, setPreview] = React.useState<string | null>(null)
   const [analyzing, setAnalyzing] = React.useState(false)
   const retakeInput = React.useRef<HTMLInputElement>(null)
+  // The last photo (already shrunk), so "Describe it" can re-estimate without a retake.
+  const lastPhoto = React.useRef<Blob | null>(null)
+  const [fixOpen, setFixOpen] = React.useState(false)
+  const [correction, setCorrection] = React.useState("")
   const { busy, error, setError, run } = useSave(ctx)
 
   React.useEffect(() => {
@@ -589,21 +595,37 @@ export function NutritionForm({ ctx }: FormProps) {
     }
   }, [ctx.supabase, ctx.workspace])
 
+  /**
+   * New photo: shrink it, show it, estimate. Or, with `fix`, re-estimate the
+   * last photo using the user's correction ("half portion", "no rice").
+   */
   const analyze = React.useCallback(
-    async (file: File) => {
-      setPreview((old) => {
-        if (old) URL.revokeObjectURL(old)
-        return URL.createObjectURL(file)
-      })
+    async (file: File | null, fix?: { correction: string; previous: string }) => {
+      if (file) {
+        setPreview((old) => {
+          if (old) URL.revokeObjectURL(old)
+          return URL.createObjectURL(file)
+        })
+        lastPhoto.current = null
+      }
       setAnalyzing(true)
       setError(null)
       // The estimate level ("low", "middle", "high") is set once in Settings.
       const { data: settings } = await ctx.supabase.from("user_settings").select("estimate_level").maybeSingle()
+      if (file) lastPhoto.current = await downscale(file)
+      if (!lastPhoto.current) {
+        setAnalyzing(false)
+        return setError("Take a photo first.")
+      }
       const body = new FormData()
-      body.append("image", await downscale(file), "meal.jpg")
+      body.append("image", lastPhoto.current, "meal.jpg")
       body.append("name", "")
       body.append("details", "")
       body.append("estimate", (settings?.estimate_level as string | undefined) ?? "low")
+      if (fix) {
+        body.append("correction", fix.correction)
+        body.append("previous", fix.previous)
+      }
       try {
         const res = await fetch("/api/analyze-meal", { method: "POST", body })
         const json = await res.json()
@@ -617,6 +639,9 @@ export function NutritionForm({ ctx }: FormProps) {
         setFiber(String(e.fiber))
         setPortion(e.portion_size || null)
         setAiNote(e.notes || null)
+        // A fresh estimate closes the fix box.
+        setFixOpen(false)
+        setCorrection("")
       } catch (err) {
         setError(err instanceof Error ? err.message : "Couldn't read that photo.")
       } finally {
@@ -707,13 +732,67 @@ export function NutritionForm({ ctx }: FormProps) {
           ) : preview ? (
             <>
               Estimated from your photo
-              <span className="block text-sm text-neutral-500 dark:text-neutral-400">Check the numbers · tap to retake</span>
+              <span className="block text-sm text-neutral-500 dark:text-neutral-400">Check the numbers below</span>
             </>
           ) : (
             "Take a photo of your meal"
           )}
         </span>
       </button>
+      {/* After an estimate: easy ways to fix it if the AI got it wrong. */}
+      {preview && !analyzing && food && (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <span className="mr-auto text-sm text-neutral-500 dark:text-neutral-400">Not right?</span>
+            <button
+              type="button"
+              onClick={() => retakeInput.current?.click()}
+              className="flex h-9 cursor-pointer items-center gap-1.5 rounded-full bg-neutral-100 px-3 text-sm text-neutral-800 active:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:active:bg-neutral-700"
+            >
+              <Camera className="size-4" />
+              Retake photo
+            </button>
+            <button
+              type="button"
+              onClick={() => setFixOpen((o) => !o)}
+              aria-expanded={fixOpen}
+              className={cn(
+                "flex h-9 cursor-pointer items-center gap-1.5 rounded-full px-3 text-sm",
+                fixOpen
+                  ? "bg-[#318E63] text-white"
+                  : "bg-neutral-100 text-neutral-800 active:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:active:bg-neutral-700"
+              )}
+            >
+              <MessageSquareText className="size-4" />
+              Describe it
+            </button>
+          </div>
+          {fixOpen && (
+            <div className="flex flex-col gap-2 rounded-xl bg-neutral-100 p-3 dark:bg-neutral-800">
+              <TextArea
+                value={correction}
+                onChange={(e) => setCorrection(e.target.value)}
+                rows={2}
+                placeholder="What's off? e.g. half portion, no rice, it's turkey not chicken"
+                className="min-h-20 bg-white dark:bg-neutral-900"
+              />
+              <button
+                type="button"
+                disabled={!correction.trim()}
+                onClick={() =>
+                  analyze(null, {
+                    correction: correction.trim(),
+                    previous: `${food}, ${calories || "?"} cal, ${protein || "?"}g protein`,
+                  })
+                }
+                className="h-10 cursor-pointer rounded-lg bg-[#318E63] text-[15px] font-medium text-white disabled:opacity-40"
+              >
+                Re-estimate
+              </button>
+            </div>
+          )}
+        </div>
+      )}
       {!preview && <Recents items={recent.map((r) => ({ key: r.food_name, label: r.food_name }))} onPick={pick} />}
       <Field label="Food" hint={portion ?? undefined}>
         <TextInput value={food} onChange={(e) => setFood(e.target.value)} placeholder="Chicken burrito bowl" />
@@ -740,8 +819,10 @@ type Stack = { id: string; name: string; dose: number | null; unit: string | nul
 const UNITS = ["mg", "g", "mcg", "IU", "ml", "capsule", "tablet", "scoop", "serving"] as const
 
 export function SupplementForm({ ctx }: FormProps) {
+  const { prefs } = usePrefs()
   const [stack, setStack] = React.useState<Stack[]>([])
-  const [takenToday, setTakenToday] = React.useState<Set<string>>(new Set())
+  // Today's log ids per supplement name, so a second tap can undo one.
+  const [takenToday, setTakenToday] = React.useState<Map<string, string[]>>(new Map())
   const [ready, setReady] = React.useState<boolean | null>(null)
   const [name, setName] = React.useState("")
   const [dose, setDose] = React.useState("")
@@ -758,13 +839,15 @@ export function SupplementForm({ ctx }: FormProps) {
         .eq("workspace", ctx.workspace)
         .eq("is_active", true)
         .order("position", { ascending: true }),
-      ctx.supabase.from("supplement_logs").select("name").eq("workspace", ctx.workspace).eq("date", ctx.today),
+      ctx.supabase.from("supplement_logs").select("id, name").eq("workspace", ctx.workspace).eq("date", ctx.today),
     ]).then(([s, logs]) => {
       if (cancelled) return
       if (s.error && missingTable(s.error.message)) return setReady(false)
       setReady(true)
       setStack(((s.data ?? []) as Stack[]).map((x) => ({ ...x, dose: x.dose == null ? null : Number(x.dose) })))
-      setTakenToday(new Set(((logs.data ?? []) as { name: string }[]).map((l) => l.name)))
+      const taken = new Map<string, string[]>()
+      for (const l of (logs.data ?? []) as { id: string; name: string }[]) taken.set(l.name, [...(taken.get(l.name) ?? []), l.id])
+      setTakenToday(taken)
     })
     return () => {
       cancelled = true
@@ -772,7 +855,7 @@ export function SupplementForm({ ctx }: FormProps) {
   }, [ctx.supabase, ctx.workspace, ctx.today])
 
   async function logOne(item: { id?: string; name: string; dose: number | null; unit: string | null }) {
-    const { error: err } = await ctx.supabase.from("supplement_logs").insert({
+    const { data, error: err } = await ctx.supabase.from("supplement_logs").insert({
       user_id: ctx.userId,
       workspace: ctx.workspace,
       supplement_id: item.id ?? null,
@@ -780,15 +863,23 @@ export function SupplementForm({ ctx }: FormProps) {
       dose: item.dose,
       unit: item.unit,
       date: ctx.today,
-    })
-    return err
+    }).select("id").single()
+    return { err, id: (data?.id as string | undefined) ?? null }
   }
 
+  /** Tap to log today's dose; tap a checked one to take it back off. */
   async function tapStack(item: Stack) {
     setError(null)
-    const err = await logOne(item)
+    const ids = takenToday.get(item.name) ?? []
+    if (ids.length) {
+      const { error: err } = await ctx.supabase.from("supplement_logs").delete().eq("id", ids[ids.length - 1])
+      if (err) return setError(err.message)
+      setTakenToday((prev) => new Map(prev).set(item.name, ids.slice(0, -1)))
+      return
+    }
+    const { err, id } = await logOne(item)
     if (err) return setError(err.message)
-    setTakenToday((prev) => new Set(prev).add(item.name))
+    setTakenToday((prev) => new Map(prev).set(item.name, id ? [id] : ["?"]))
   }
 
   function submit(e: React.FormEvent) {
@@ -806,7 +897,7 @@ export function SupplementForm({ ctx }: FormProps) {
         if (res.error) return { error: res.error }
         id = res.data.id as string
       }
-      const err = await logOne({ ...item, id })
+      const { err } = await logOne({ ...item, id })
       return { error: err }
     })
   }
@@ -821,31 +912,43 @@ export function SupplementForm({ ctx }: FormProps) {
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
-      {stack.length > 0 && (
-        <div className="flex flex-col gap-1.5">
-          <span className="text-sm text-neutral-500 dark:text-neutral-400">Your stack · tap to log for today</span>
-          <ul className="overflow-hidden rounded-xl bg-neutral-100 dark:bg-neutral-800">
-            {stack.map((s) => {
-              const taken = takenToday.has(s.name)
-              return (
-                <li key={s.id} className="border-t border-white first:border-t-0 dark:border-neutral-900">
-                  <button
-                    type="button"
-                    onClick={() => !taken && tapStack(s)}
-                    className="flex min-h-12 w-full cursor-pointer items-center gap-3 px-4 text-left"
-                  >
-                    <span className={cn("flex size-5 items-center justify-center rounded-full border-[1.5px]", taken ? "border-[#318E63] bg-[#318E63] text-white" : "border-neutral-400 dark:border-neutral-600")}>
-                      {taken && <Check className="size-3" strokeWidth={3} />}
-                    </span>
-                    <span className="flex-1 text-[15px] text-neutral-900 dark:text-neutral-100">{s.name}</span>
-                    <span className="text-sm text-neutral-500 dark:text-neutral-400">{s.dose != null ? `${s.dose} ${s.unit ?? ""}` : ""}</span>
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        </div>
-      )}
+      {/* Due today first; ones scheduled for other days sit below, faded,
+          but can still be logged. Tap a checked one to undo it. */}
+      {[
+        { label: "Your stack · tap to log, tap again to undo", items: stack.filter((s) => supplementDue(prefs, s.id, ctx.today)), faded: false },
+        { label: "Not scheduled today", items: stack.filter((s) => !supplementDue(prefs, s.id, ctx.today)), faded: true },
+      ]
+        .filter((g) => g.items.length > 0)
+        .map((g) => (
+          <div key={g.label} className="flex flex-col gap-1.5">
+            <span className="text-sm text-neutral-500 dark:text-neutral-400">{g.label}</span>
+            <ul className="overflow-hidden rounded-xl bg-neutral-100 dark:bg-neutral-800">
+              {g.items.map((s) => {
+                const taken = (takenToday.get(s.name)?.length ?? 0) > 0
+                const days = supplementSchedule(prefs, s.id)
+                return (
+                  <li key={s.id} className="border-t border-white first:border-t-0 dark:border-neutral-900">
+                    <button
+                      type="button"
+                      onClick={() => tapStack(s)}
+                      aria-pressed={taken}
+                      className={cn("flex min-h-12 w-full cursor-pointer items-center gap-3 px-4 text-left", g.faded && !taken && "opacity-55")}
+                    >
+                      <span className={cn("flex size-5 items-center justify-center rounded-full border-[1.5px]", taken ? "border-[#318E63] bg-[#318E63] text-white" : "border-neutral-400 dark:border-neutral-600")}>
+                        {taken && <Check className="size-3" strokeWidth={3} />}
+                      </span>
+                      <span className="flex-1 text-[15px] text-neutral-900 dark:text-neutral-100">
+                        {s.name}
+                        {days && <span className="block text-xs text-neutral-500 dark:text-neutral-400">{scheduleLabel(days)}</span>}
+                      </span>
+                      <span className="text-sm text-neutral-500 dark:text-neutral-400">{s.dose != null ? `${s.dose} ${s.unit ?? ""}` : ""}</span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        ))}
       <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{stack.length ? "Something else" : "Log a supplement"}</span>
       <Field label="Name">
         <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder="Creatine" />

@@ -132,7 +132,7 @@ export function NotificationSetting({ rowClassName }: { rowClassName: string }) 
     })
 
   const note: Partial<Record<Status, string>> = {
-    install: "On iPhone, open Mosaic in Safari, tap Share → Add to Home Screen, then open it from that icon to turn these on.",
+    install: "On iPhone, tap Share → Add to Home Screen, then open Mosaic from that icon to turn these on.",
     unsupported: "This browser can't show notifications.",
     "no-key": "Add the VAPID keys to .env.local and restart the dev server.",
     blocked: "Notifications are blocked for Mosaic. Allow them in your phone or browser settings, then come back.",

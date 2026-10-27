@@ -51,7 +51,7 @@ const TABS: {
   { label: "Today", href: "/app", icon: TodayIcon },
   { label: "Trends", href: "/app/trends", icon: TrendsIcon },
   { label: "Insights", href: "/app/insights", icon: MessageSquareMore },
-  { label: "More", href: "/app/more", icon: CircleEllipsis },
+  { label: "Extras", href: "/app/more", icon: CircleEllipsis },
 ]
 
 function isActive(pathname: string, href: string) {
@@ -149,15 +149,25 @@ export function TabBar({ userId }: { userId: string }) {
 
   return (
     <>
+      {/* The page fades to its own background behind the bar, so cards
+          scroll out of view before they touch it instead of blending in. */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-20 h-36 bg-gradient-to-t from-[#F4F4F4] from-30% to-transparent in-data-[keyboard=open]:hidden dark:from-[#0B0B0C]"
+      />
+
       {/* The bar. It sits under the dim layer, so it dims with the page. */}
       <nav
         aria-label="Main"
         // Hidden while the phone keyboard is up (Insights sets data-keyboard).
-        className="fixed inset-x-3 z-30 mx-auto flex h-[60px] max-w-[420px] drop-shadow-[0_2px_6px_rgb(0_0_0/0.08)] in-data-[keyboard=open]:hidden"
+        // A faint edge along the top (drop-shadow traces the shape, so it
+        // follows the notch) plus a soft shadow: dark edge on light, light
+        // edge on dark.
+        className="fixed inset-x-3 z-30 mx-auto flex h-[60px] max-w-[420px] [filter:drop-shadow(0_-0.5px_0_rgb(0_0_0/0.08))_drop-shadow(0_6px_18px_rgb(0_0_0/0.14))] in-data-[keyboard=open]:hidden dark:[filter:drop-shadow(0_-1px_0_rgb(255_255_255/0.14))_drop-shadow(0_8px_24px_rgb(0_0_0/0.8))]"
         style={{ bottom: BAR_BOTTOM }}
       >
         {/* Two white halves joined by a notch the round button sits in. */}
-        <div className="flex flex-1 items-stretch rounded-l-[20px] bg-white dark:bg-neutral-900">
+        <div className="flex flex-1 items-stretch rounded-l-[20px] bg-white dark:bg-[#242424]">
           {TABS.slice(0, 2).map(tabLink)}
         </div>
         <svg
@@ -170,10 +180,10 @@ export function TabBar({ userId }: { userId: string }) {
         >
           <path
             d="M0 0 C22 0 26 32 60 32 C94 32 98 0 120 0 V60 H0 Z"
-            className="fill-white dark:fill-neutral-900"
+            className="fill-white dark:fill-[#242424]"
           />
         </svg>
-        <div className="flex flex-1 items-stretch rounded-r-[20px] bg-white dark:bg-neutral-900">
+        <div className="flex flex-1 items-stretch rounded-r-[20px] bg-white dark:bg-[#242424]">
           {TABS.slice(2).map(tabLink)}
         </div>
       </nav>

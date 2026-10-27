@@ -1,9 +1,10 @@
 import Link from "next/link"
-import { ChevronRight, KeyRound, LayoutDashboard, LogOut } from "lucide-react"
+import { ChevronRight, KeyRound, LogOut } from "lucide-react"
 
 import { signout } from "@/app/login/actions"
 import { PAGE_TITLE } from "@/lib/app/ui"
 import { NotificationSetting } from "@/components/app/notification-setting"
+import { OpenAIKeySetting } from "@/components/app/openai-key-setting"
 import { PhoneSetting } from "@/components/app/phone-setting"
 import { SectionToggles } from "@/components/app/section-toggles"
 import { ThemeToggle } from "@/components/app/theme-toggle"
@@ -21,7 +22,7 @@ export default async function MorePage() {
   return (
     <div className="flex flex-col gap-8">
       <header className="flex flex-col gap-2">
-        <h1 className={`pt-4 ${PAGE_TITLE}`}>More</h1>
+        <h1 className={`pt-4 ${PAGE_TITLE}`}>Extras</h1>
         <p className="text-sm text-neutral-500 dark:text-neutral-400">{user?.email}</p>
       </header>
 
@@ -31,6 +32,7 @@ export default async function MorePage() {
           <ThemeToggle className={`${row} cursor-pointer`} />
           {user && <PhoneSetting userId={user.id} />}
           <NotificationSetting rowClassName={row} />
+          <OpenAIKeySetting />
         </div>
       </section>
 
@@ -45,12 +47,6 @@ export default async function MorePage() {
       </section>
 
       <div className="divide-y divide-neutral-200 dark:divide-neutral-800 overflow-hidden rounded-2xl bg-white dark:bg-neutral-900">
-        {/* History, jobs etc. get added here as they're rebuilt. */}
-        <Link href="/dashboard" className={row}>
-          <LayoutDashboard className="size-5 text-neutral-500 dark:text-neutral-400" />
-          <span className="flex-1">Old dashboard</span>
-          <ChevronRight className="size-4 text-neutral-400 dark:text-neutral-500" />
-        </Link>
         <Link href="/change-password" className={row}>
           <KeyRound className="size-5 text-neutral-500 dark:text-neutral-400" />
           <span className="flex-1">Change password</span>

@@ -1,5 +1,7 @@
 import { cookies } from "next/headers"
+import Link from "next/link"
 import { notFound } from "next/navigation"
+import { ChevronLeft } from "lucide-react"
 
 import { CategoryDetail } from "@/components/app/trends/category-detail"
 import { CategorySettings } from "@/components/app/trends/category-settings"
@@ -18,7 +20,13 @@ export default async function CategoryPage({
 }) {
   const { category } = await params
   if (!isTrendCategory(category)) notFound()
-  const range = parseRange((await searchParams).range)
+  const query = await searchParams
+  const range = parseRange(query.range)
+  // Cards on Today link here with ?from=today; everything else came from Trends.
+  const fromToday = query.from === "today"
+  const back = fromToday
+    ? { href: "/app", label: "Back to Today" }
+    : { href: `/app/trends?range=${range.id}`, label: "Back to Trends" }
 
   const supabase = await createClient()
   const {
@@ -32,7 +40,16 @@ export default async function CategoryPage({
 
   return (
     <div className="flex flex-col gap-12">
-      <header className="flex items-start justify-between gap-4 pt-4">
+      <header className="flex flex-col gap-2">
+        {/* Same spot, size and color as the date on Today. */}
+        <Link
+          href={back.href}
+          className="-ml-1 flex h-5 w-fit items-center gap-0.5 text-sm text-neutral-500 active:opacity-60 dark:text-neutral-400"
+        >
+          <ChevronLeft className="size-4" />
+          {back.label}
+        </Link>
+        <div className="flex items-start justify-between gap-4">
         <h1 className={PAGE_TITLE}>{meta.title}</h1>
         <CategorySettings
           category={category}
@@ -45,8 +62,9 @@ export default async function CategoryPage({
             stack: data.stack,
           }}
         />
+        </div>
       </header>
-      <CategoryDetail category={category} data={data} range={range} />
+      <CategoryDetail category={category} data={data} range={range} keep={fromToday ? "from=today" : undefined} />
     </div>
   )
 }

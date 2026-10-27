@@ -65,6 +65,8 @@ export type Summary = {
   series: number[]
   /** Nothing logged in this window. */
   empty: boolean
+  /** A second big number shown on the right instead of the sparkline. */
+  side?: { value: string; label: string }
 }
 
 function changeLine(pct: number | null, w: Window, unit = "%") {
@@ -107,7 +109,8 @@ export function summarize(
       const protein = distinctDays(now) ? sum(now, (n) => n.protein) / distinctDays(now) : 0
       return {
         value: Math.round(a).toLocaleString(),
-        sub: `avg calories/day · ${Math.round(protein)}g protein`,
+        sub: "avg calories/day",
+        side: { value: `${Math.round(protein)}g`, label: "avg protein/day" },
         change: changeLine(pctChange(a, avg(data.nutrition.filter(prev(w)))), w),
         // NaN = nothing logged that day; the sparkline skips it instead of dipping to 0.
         series: perBucket(w, data.nutrition, (rows) => (rows.length ? avg(rows) : NaN)),

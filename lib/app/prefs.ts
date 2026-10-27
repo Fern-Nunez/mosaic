@@ -38,6 +38,11 @@ export type AppPrefs = {
   journalHideText?: boolean
   /** Sections turned off in More. */
   hiddenSections?: SectionId[]
+  /**
+   * Weekdays each supplement is taken, by supplement id (0 = Sunday).
+   * Missing or all 7 = every day.
+   */
+  supplementDays?: Record<string, number[]>
 }
 
 export const DEFAULT_SLEEP_GOAL = 7
@@ -48,6 +53,20 @@ export function readPrefs(value: unknown): AppPrefs {
 
 export function isSectionOn(prefs: AppPrefs, id: SectionId) {
   return !prefs.hiddenSections?.includes(id)
+}
+
+/** Weekdays a supplement is taken, or null for every day. */
+export function supplementSchedule(prefs: AppPrefs, id: string): number[] | null {
+  const days = prefs.supplementDays?.[id]
+  return Array.isArray(days) && days.length > 0 && days.length < 7 ? days : null
+}
+
+/** Is this supplement scheduled on the given "YYYY-MM-DD" day? */
+export function supplementDue(prefs: AppPrefs, id: string, day: string) {
+  const days = supplementSchedule(prefs, id)
+  if (!days) return true
+  const [y, m, d] = day.split("-").map(Number)
+  return days.includes(new Date(y, m - 1, d, 12).getDay())
 }
 
 /** The saved plan, or null when there isn't one (or every day is rest). */

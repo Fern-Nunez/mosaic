@@ -56,14 +56,15 @@ const COLORS = {
 } as const
 
 // Each card opens its full page under Trends.
+// "from=today" makes the page's back link say "Back to Today".
 const LINKS = {
-  money: "/app/trends/money",
-  nutrition: "/app/trends/nutrition",
-  gym: "/app/trends/workout",
-  sleep: "/app/trends/sleep",
-  weight: "/app/trends/weight",
-  journal: "/app/trends/journal",
-  habits: "/app/trends/habits",
+  money: "/app/trends/money?from=today",
+  nutrition: "/app/trends/nutrition?from=today",
+  gym: "/app/trends/workout?from=today",
+  sleep: "/app/trends/sleep?from=today",
+  weight: "/app/trends/weight?from=today",
+  journal: "/app/trends/journal?from=today",
+  habits: "/app/trends/habits?from=today",
 }
 
 const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })

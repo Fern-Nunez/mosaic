@@ -86,7 +86,7 @@ export async function POST(request: Request) {
   apiKey ??= process.env.OPENAI_API_KEY || null
   if (!apiKey) {
     return NextResponse.json(
-      { error: "No OpenAI key yet. Add yours in the old dashboard under Settings." },
+      { error: "No OpenAI key yet. Add yours in Extras → OpenAI key." },
       { status: 400 }
     )
   }

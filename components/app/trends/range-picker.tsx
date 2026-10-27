@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
  * "Time Range" row from the Figma: label on the left, D · M · Q · Y on the
  * right, a rule underneath. Kept in the URL so it survives back/forward.
  */
-export function RangePicker({ active }: { active: RangeId }) {
+export function RangePicker({ active, keep }: { active: RangeId; keep?: string }) {
   const pathname = usePathname()
   // The pill moves on tap, not when the server finishes the new page.
   // Cleared automatically once `active` catches up.
@@ -32,7 +32,7 @@ export function RangePicker({ active }: { active: RangeId }) {
         {RANGES.map((r) => (
           <Link
             key={r.id}
-            href={`${pathname}?range=${r.id}`}
+            href={`${pathname}?range=${r.id}${keep ? `&${keep}` : ""}`}
             replace
             scroll={false}
             onClick={() => r.id !== shown && setPending({ id: r.id, from: active })}

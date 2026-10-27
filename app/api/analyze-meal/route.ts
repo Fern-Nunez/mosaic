@@ -77,7 +77,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "No OpenAI API key found. Add yours under Settings in the sidebar.",
+          "No OpenAI API key found. Add yours in Extras → OpenAI key.",
       },
       { status: 400 }
     )
@@ -88,6 +88,9 @@ export async function POST(request: Request) {
   const name = String(form.get("name") ?? "").trim()
   const details = String(form.get("details") ?? "").trim()
   const estimate = String(form.get("estimate") ?? "low").trim()
+  // "Not right?" in the app: what the first estimate said, and the fix.
+  const correction = String(form.get("correction") ?? "").trim().slice(0, 500)
+  const previous = String(form.get("previous") ?? "").trim().slice(0, 200)
 
   if (!(image instanceof File) || image.size === 0) {
     return NextResponse.json({ error: "No photo provided." }, { status: 400 })
@@ -116,6 +119,9 @@ export async function POST(request: Request) {
     name && `The user calls it: "${name}".`,
     details && `The user says it contains: ${details}.`,
     ESTIMATE_GUIDANCE[estimate] ?? ESTIMATE_GUIDANCE.low,
+    correction &&
+      `A first estimate of this photo was wrong${previous ? ` (it said: ${previous})` : ""}. ` +
+        `The user corrected it: "${correction}". Re-estimate with that correction; it overrides what the photo seems to show.`,
   ]
     .filter(Boolean)
     .join(" ")

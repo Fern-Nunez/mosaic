@@ -42,7 +42,8 @@ export default async function AppLayout({
       : DEFAULT_WORKSPACES
   const cookieStore = await cookies()
   const cookieWorkspace = cookieStore.get("mosaic-workspace")?.value
-  const theme = cookieStore.get(THEME_COOKIE)?.value === "dark" ? "dark" : "light"
+  // Dark unless you've switched to light in More.
+  const theme = cookieStore.get(THEME_COOKIE)?.value === "light" ? "light" : "dark"
   const activeId = workspaces.some((ws) => ws.id === cookieWorkspace)
     ? cookieWorkspace!
     : workspaces[0].id

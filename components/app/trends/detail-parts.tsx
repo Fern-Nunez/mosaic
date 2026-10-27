@@ -19,6 +19,7 @@ import {
 } from "recharts"
 
 import { EdgeXTick, InsideYTick, StartTick } from "@/components/app/chart-ticks"
+import { EntryEditor, type EntryEdit } from "@/components/app/trends/entry-editor"
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart"
 import type { Bucket, Month } from "@/lib/app/dates"
 import { dateKey, inRange, keyToDate } from "@/lib/app/dates"
@@ -234,9 +235,11 @@ export type ListItem = {
   title: string
   detail?: string
   note?: string
+  /** Makes the row tappable to edit or delete the saved entry. */
+  edit?: EntryEdit
 }
 
-/** Entries grouped under date headings, newest first. */
+/** Entries grouped under date headings, newest first. Tap one to edit it. */
 export function EntryList({
   items,
   empty,
@@ -246,6 +249,7 @@ export function EntryList({
   empty: string
   limit?: number
 }) {
+  const [editing, setEditing] = React.useState<EntryEdit | null>(null)
   const sorted = [...items].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)).slice(0, limit)
   const groups: { date: string; items: ListItem[] }[] = []
   for (const item of sorted) {
@@ -266,29 +270,45 @@ export function EntryList({
                 {keyToDate(g.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
               </p>
               <ul>
-                {g.items.map((item) => (
-                  <li
-                    key={item.key}
-                    className="flex min-h-12 items-start gap-3 border-t border-neutral-100 px-5 py-3 first:border-t-0 dark:border-neutral-800"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[15px] text-neutral-900 dark:text-neutral-100">{item.title}</p>
-                      {item.note && (
-                        <p className="line-clamp-2 text-sm text-neutral-500 dark:text-neutral-400">{item.note}</p>
+                {g.items.map((item) => {
+                  const row = (
+                    <>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[15px] text-neutral-900 dark:text-neutral-100">{item.title}</p>
+                        {item.note && (
+                          <p className="line-clamp-2 text-sm text-neutral-500 dark:text-neutral-400">{item.note}</p>
+                        )}
+                      </div>
+                      {item.detail && (
+                        <span className="shrink-0 text-sm tabular-nums text-neutral-500 dark:text-neutral-400">
+                          {item.detail}
+                        </span>
                       )}
-                    </div>
-                    {item.detail && (
-                      <span className="shrink-0 text-sm tabular-nums text-neutral-500 dark:text-neutral-400">
-                        {item.detail}
-                      </span>
-                    )}
-                  </li>
-                ))}
+                    </>
+                  )
+                  const rowClass = "flex min-h-12 w-full items-start gap-3 px-5 py-3 text-left"
+                  return (
+                    <li key={item.key} className="border-t border-neutral-100 first:border-t-0 dark:border-neutral-800">
+                      {item.edit ? (
+                        <button
+                          type="button"
+                          onClick={() => setEditing(item.edit!)}
+                          className={cn(rowClass, "cursor-pointer active:bg-neutral-50 dark:active:bg-neutral-800")}
+                        >
+                          {row}
+                        </button>
+                      ) : (
+                        <div className={rowClass}>{row}</div>
+                      )}
+                    </li>
+                  )
+                })}
               </ul>
             </div>
           ))}
         </div>
       )}
+      <EntryEditor target={editing} onClose={() => setEditing(null)} />
     </Panel>
   )
 }

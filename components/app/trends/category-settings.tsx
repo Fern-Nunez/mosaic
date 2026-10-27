@@ -439,9 +439,14 @@ function HabitsSettings({ done }: FormProps) {
   )
 }
 
-/** Stop taking a supplement (it leaves the stack; history stays). */
-function SupplementsSettings({ data, done }: FormProps) {
+/**
+ * Which days you take each supplement (saves as you tap), and "Stop taking"
+ * (it leaves the stack; history stays). Off-days move it to "Not scheduled
+ * today" in the logger instead of your daily list.
+ */
+function SupplementsSettings({ data, userId, done }: FormProps) {
   const [stack, setStack] = React.useState(data.stack)
+  const [schedule, setSchedule] = React.useState<Record<string, number[]>>(data.prefs.supplementDays ?? {})
   const [error, setError] = React.useState<string | null>(null)
 
   async function stop(id: string) {
@@ -454,30 +459,75 @@ function SupplementsSettings({ data, done }: FormProps) {
     }
   }
 
+  async function toggleDay(id: string, day: number) {
+    const current = schedule[id]?.length ? schedule[id] : [0, 1, 2, 3, 4, 5, 6]
+    const next = current.includes(day) ? current.filter((d) => d !== day) : [...current, day].sort()
+    if (next.length === 0) return setError("Pick at least one day, or use Stop taking.")
+    setError(null)
+    const prev = schedule
+    const updated = { ...schedule }
+    if (next.length === 7) delete updated[id]
+    else updated[id] = next
+    setSchedule(updated)
+    const err = await savePrefs(userId, { supplementDays: updated })
+    if (err) {
+      setSchedule(prev)
+      setError(err)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
+      {!data.prefsReady && <NotReady />}
       {stack.length === 0 ? (
         <p className="text-sm text-neutral-500 dark:text-neutral-400">Your stack is empty. Log a supplement with + to add one.</p>
       ) : (
-        <ul className="overflow-hidden rounded-xl bg-neutral-100 dark:bg-neutral-800">
-          {stack.map((s) => (
-            <li key={s.id} className="flex min-h-14 items-center gap-3 border-t border-white px-4 first:border-t-0 dark:border-neutral-900">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[15px] font-medium">{s.name}</p>
-                <p className="text-sm text-neutral-500 dark:text-neutral-400">{s.dose != null ? `${s.dose} ${s.unit ?? ""}` : "No dose set"}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => stop(s.id)}
-                className="h-9 cursor-pointer rounded-full bg-white px-3 text-sm text-neutral-700 dark:bg-neutral-900 dark:text-neutral-300"
-              >
-                Stop taking
-              </button>
-            </li>
-          ))}
+        <ul className="flex flex-col gap-3">
+          {stack.map((s) => {
+            const on = schedule[s.id]?.length ? schedule[s.id] : [0, 1, 2, 3, 4, 5, 6]
+            return (
+              <li key={s.id} className="flex flex-col gap-2 rounded-xl bg-neutral-100 p-3 dark:bg-neutral-800">
+                <div className="flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[15px] font-medium">{s.name}</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                      {[s.dose != null ? `${s.dose} ${s.unit ?? ""}`.trim() : null, scheduleLabel(on)].filter(Boolean).join(" · ")}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => stop(s.id)}
+                    className="h-8 shrink-0 cursor-pointer rounded-full bg-white px-3 text-sm text-neutral-700 dark:bg-neutral-900 dark:text-neutral-300"
+                  >
+                    Stop taking
+                  </button>
+                </div>
+                <div className="flex justify-between gap-1">
+                  {LETTERS.map((l, d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => toggleDay(s.id, d)}
+                      aria-pressed={on.includes(d)}
+                      aria-label={`${s.name} on ${WEEKDAY_SHORT[d]}`}
+                      className={cn(
+                        "flex size-9 cursor-pointer items-center justify-center rounded-full text-sm font-medium",
+                        on.includes(d) ? "bg-[#C27A98] text-white" : "bg-white text-neutral-600 dark:bg-neutral-900 dark:text-neutral-400"
+                      )}
+                    >
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </li>
+            )
+          })}
         </ul>
       )}
-      <p className="text-sm text-neutral-500 dark:text-neutral-400">Stopping keeps your history; it just leaves the stack.</p>
+      <p className="text-sm text-neutral-500 dark:text-neutral-400">
+        Tap days to set when you take each one. On other days it moves to &ldquo;Not scheduled today&rdquo; so it isn&apos;t
+        logged by accident. Stopping keeps your history.
+      </p>
       <ErrorText>{error}</ErrorText>
       <button type="button" onClick={done} className="h-12 cursor-pointer rounded-xl bg-neutral-100 text-base dark:bg-neutral-800">
         Done

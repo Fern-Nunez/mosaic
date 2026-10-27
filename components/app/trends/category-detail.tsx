@@ -39,8 +39,8 @@ import {
   type Window,
 } from "@/lib/app/metrics"
 import type { TrendCategory, TrendData } from "@/lib/app/trend-data"
-import { isDueOn } from "@/lib/habits"
-import { DEFAULT_SLEEP_GOAL, planLabel, weeklyWorkoutGoal, workoutPlan, type WorkoutKind } from "@/lib/app/prefs"
+import { isDueOn, scheduleLabel } from "@/lib/habits"
+import { DEFAULT_SLEEP_GOAL, planLabel, weeklyWorkoutGoal, workoutPlan, type WorkoutKind, supplementSchedule } from "@/lib/app/prefs"
 import { CARDIO, type CardioActivity } from "@/lib/app/workouts"
 import { cn } from "@/lib/utils"
 
@@ -50,10 +50,13 @@ export function CategoryDetail({
   category,
   data,
   range,
+  keep,
 }: {
   category: TrendCategory
   data: TrendData
   range: Range
+  /** Extra query kept when switching range (e.g. "from=today" for the back link). */
+  keep?: string
 }) {
   const today = useToday()
   const { habits, completions } = useHabits()
@@ -68,7 +71,7 @@ export function CategoryDetail({
 
   return (
     <div className="flex flex-col gap-4">
-      <RangePicker active={range.id} />
+      <RangePicker active={range.id} keep={keep} />
 
       {/* Headline: the same number the Trends card shows. Money skips it;
           its half-ring already says what came in, went out and is left. */}
@@ -87,6 +90,12 @@ export function CategoryDetail({
             </p>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">{s.sub}</p>
           </div>
+          {s.side && (
+            <div className="shrink-0 text-left">
+              <p className="text-3xl font-medium tracking-tight tabular-nums text-neutral-900 dark:text-neutral-100">{s.side.value}</p>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">{s.side.label}</p>
+            </div>
+          )}
         </div>
         {s.change && <p className="text-sm text-neutral-500 dark:text-neutral-400">{s.change}</p>}
       </Panel>
@@ -303,6 +312,7 @@ function NutritionDetail({ data, w, rangeLabel }: DetailProps) {
           ]
             .filter(Boolean)
             .join(" · ") || undefined,
+          edit: { table: "nutrition" as const, row: n },
         }))}
       />
     </>
@@ -346,15 +356,14 @@ function WorkoutDetail({ data, w }: DetailProps) {
     .sort((a, b) => b.value - a.value)
     .slice(0, 6)
 
-  // One list row per exercise per day, plus each run, ride and swim.
-  const sessionRows = new Map<string, { date: string; exercise: string; sets: number; best: number; unit: string }>()
-  for (const l of lifts) {
-    const key = `${l.date}|${l.exercise}`
-    const row = sessionRows.get(key) ?? { date: l.date, exercise: l.exercise, sets: 0, best: 0, unit: l.unit === "kg" ? "kg" : "lb" }
-    row.sets += l.sets ?? 1
-    if ((l.weight ?? 0) > row.best && l.unit !== "bodyweight") row.best = l.weight ?? 0
-    sessionRows.set(key, row)
-  }
+  // "3×10 · 135 lb": one list row per logged lift, so each can be edited.
+  const liftDetail = (l: (typeof lifts)[number]) =>
+    [
+      l.sets != null && l.reps != null ? `${l.sets}×${l.reps}` : l.sets != null ? `${l.sets} set${l.sets === 1 ? "" : "s"}` : l.reps != null ? `${l.reps} reps` : null,
+      l.unit === "bodyweight" ? "bodyweight" : l.weight ? `${l.weight} ${l.unit === "kg" ? "kg" : "lb"}` : null,
+    ]
+      .filter(Boolean)
+      .join(" · ") || undefined
   const minutes = (s: number | null) => (s ? `${Math.round(s / 60)} min` : null)
 
   return (
@@ -392,23 +401,26 @@ function WorkoutDetail({ data, w }: DetailProps) {
       <EntryList
         empty="No workouts in this range."
         items={[
-          ...[...sessionRows.values()].map((r) => ({
-            key: `${r.date}|${r.exercise}`,
-            date: r.date,
-            title: `🏋️ ${r.exercise}`,
-            detail: `${r.sets} set${r.sets === 1 ? "" : "s"}${r.best > 0 ? ` · ${r.best} ${r.unit}` : ""}`,
+          ...lifts.map((l) => ({
+            key: l.id,
+            date: l.date,
+            title: `🏋️ ${l.exercise}`,
+            detail: liftDetail(l),
+            edit: { table: "gym_weight" as const, row: l },
           })),
           ...runs.map((r) => ({
             key: r.id,
             date: r.date,
             title: "🏃 Run",
             detail: `${r.distance_miles.toFixed(1)} mi · ${Math.round(r.duration_seconds / 60)} min`,
+            edit: { table: "runs" as const, row: r },
           })),
           ...cardio.map((c) => ({
             key: c.id,
             date: c.date,
             title: `${CARDIO[c.activity].emoji} ${CARDIO[c.activity].noun}`,
             detail: [cardioDistance(c), minutes(c.duration_seconds)].filter(Boolean).join(" · ") || undefined,
+            edit: { table: "cardio" as const, row: c },
           })),
         ]}
       />
@@ -563,6 +575,7 @@ function WeightDetail({ data, w, rangeLabel }: DetailProps) {
             date: r.date,
             title: `${r.weight} ${unit}`,
             detail: diff ? `${diff > 0 ? "+" : ""}${diff}` : undefined,
+            edit: { table: "personal_weight" as const, row: r },
           }
         })}
       />
@@ -618,6 +631,7 @@ function SleepDetail({ data, w, rangeLabel }: DetailProps) {
           date: s.date,
           title: s.hours != null ? hoursLabel(s.hours) : "Sleep",
           detail: s.score != null ? `Score ${s.score}` : undefined,
+          edit: { table: "sleep" as const, row: s },
         }))}
       />
     </>
@@ -671,6 +685,7 @@ function JournalDetail({ data, w, rangeLabel }: DetailProps) {
           title: j.title || "Untitled entry",
           detail: j.mood && j.mood !== "unknown" ? cap(j.mood) : undefined,
           note: data.prefs.journalHideText ? undefined : j.entry.slice(0, 200),
+          edit: { table: "journal" as const, row: j },
         }))}
       />
     </>
@@ -765,20 +780,33 @@ function SupplementsDetail({ data, w }: DetailProps) {
         ) : (
           <ul className="-mx-5 -mb-2">
             {data.stack.map((s) => {
-              const n = counts.get(s.name) ?? 0
+              // Days taken out of the days it was due, not every day (zinc on
+              // M/W/F shouldn't read 3/26). Off-schedule days are counted apart.
+              const days = supplementSchedule(data.prefs, s.id)
+              const isDue = (d: string) => !days || days.includes(keyToDate(d).getDay())
+              const takenOn = new Set(rows.filter((r) => r.name === s.name).map((r) => r.date))
+              const n = [...takenOn].filter(isDue).length
+              const extra = takenOn.size - n
+              let due = 0
+              for (let d = w.start; d <= w.today; d = shiftKey(d, 1)) if (isDue(d)) due++
               return (
                 <li key={s.id} className="flex min-h-14 items-center gap-3 border-t border-neutral-100 px-5 py-2 first:border-t-0 dark:border-neutral-800">
                   <span aria-hidden className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#C27A981F] text-base">💊</span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[15px] font-medium text-neutral-900 dark:text-neutral-100">{s.name}</p>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                      {[s.dose != null ? `${s.dose} ${s.unit ?? ""}`.trim() : null, s.timing && s.timing !== "any" ? cap(s.timing) : null]
+                      {[
+                        s.dose != null ? `${s.dose} ${s.unit ?? ""}`.trim() : null,
+                        days ? scheduleLabel(days) : null,
+                        s.timing && s.timing !== "any" ? cap(s.timing) : null,
+                      ]
                         .filter(Boolean)
                         .join(" · ") || "No dose set"}
                     </p>
                   </div>
-                  <span className="shrink-0 text-sm tabular-nums text-neutral-500 dark:text-neutral-400">
-                    {n}/{w.days} days
+                  <span className="shrink-0 text-right text-sm tabular-nums text-neutral-500 dark:text-neutral-400">
+                    {n}/{due} days
+                    {extra > 0 && <span className="block text-xs">+{extra} off-schedule</span>}
                   </span>
                 </li>
               )
@@ -819,6 +847,7 @@ function SupplementsDetail({ data, w }: DetailProps) {
           date: s.date,
           title: s.name,
           detail: s.dose != null ? `${s.dose} ${s.unit ?? ""}`.trim() : undefined,
+          edit: { table: "supplement_logs" as const, row: s },
         }))}
       />
     </>

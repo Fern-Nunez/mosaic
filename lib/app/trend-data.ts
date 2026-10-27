@@ -38,6 +38,8 @@ export type TrendData = {
   journal: { id: string; date: string; title: string | null; entry: string; mood: string | null }[]
   /** Weigh-ins in the window plus the one right before it, oldest first. */
   weights: { id: string; date: string; weight: number; unit: string | null }[]
+  /** The 5 latest weigh-ins, oldest first, whatever the range. */
+  recentWeights: { id: string; date: string; weight: number; unit: string | null }[]
   supplements: { id: string; date: string; name: string; dose: number | null; unit: string | null }[]
   /** Active supplements in the user's stack. */
   stack: { id: string; name: string; dose: number | null; unit: string | null; timing: string | null }[]
@@ -70,22 +72,25 @@ export async function loadTrendData(
   const rangeSince = shiftKey(earliestNeeded(serverYesterday, range), -2)
   const weekSince = shiftKey(serverYesterday, -8)
   const sinceKey = rangeSince < weekSince ? rangeSince : weekSince
+  // Money always goes back to the 1st, for the budget bar on the Trends card.
+  const monthSince = shiftKey(`${serverYesterday.slice(0, 8)}01`, -2)
+  const moneySince = monthSince < sinceKey ? monthSince : sinceKey
   const want = (c: string) => !only || only === c
 
-  const scoped = (table: string, columns: string) =>
+  const scoped = (table: string, columns: string, since = sinceKey) =>
     supabase
       .from(table)
       .select(columns)
       .eq("user_id", userId)
       .eq("workspace", workspace)
-      .gte("date", sinceKey)
+      .gte("date", since)
       .order("date", { ascending: true })
 
   const empty = Promise.resolve({ data: [], error: null })
 
-  const [transactions, nutrition, gym, runs, cardio, sleep, journal, weights, before, supplements, stack, settings] =
+  const [transactions, nutrition, gym, runs, cardio, sleep, journal, weights, before, supplements, stack, settings, lastWeights] =
     await Promise.all([
-      want("money") ? scoped("transactions", "id, date, amount, transaction_type, category, description, payment_method") : empty,
+      want("money") ? scoped("transactions", "id, date, amount, transaction_type, category, description, payment_method", moneySince) : empty,
       want("nutrition") ? scoped("nutrition", "id, date, meal_type, food_name, calories, protein, carbs, fat, fiber") : empty,
       want("workout") ? scoped("gym_weight", "id, date, exercise, sets, reps, weight, unit") : empty,
       want("workout") ? scoped("runs", "id, date, distance_miles, duration_seconds") : empty,
@@ -121,6 +126,17 @@ export async function loadTrendData(
         : empty,
       // "*" so this still works before newer columns (app_prefs) exist.
       supabase.from("user_settings").select("*").eq("user_id", userId).maybeSingle(),
+      // The 5 latest weigh-ins whenever they were, for the Trends card.
+      want("weight")
+        ? supabase
+            .from("personal_weight")
+            .select("id, date, weight, unit")
+            .eq("user_id", userId)
+            .eq("workspace", workspace)
+            .not("weight", "is", null)
+            .order("date", { ascending: false })
+            .limit(5)
+        : empty,
     ])
 
   const rows = <T,>(res: { data: unknown }) => (Array.isArray(res.data) ? (res.data as T[]) : [])
@@ -155,6 +171,9 @@ export async function loadTrendData(
       ...w,
       weight: Number(w.weight),
     })),
+    recentWeights: rows<TrendData["weights"][number]>(lastWeights)
+      .map((w) => ({ ...w, weight: Number(w.weight) }))
+      .reverse(),
     supplements: rows<TrendData["supplements"][number]>(supplements).map((s) => ({ ...s, dose: num(s.dose) })),
     supplementsReady: !supplements.error,
     stack: rows<TrendData["stack"][number]>(stack).map((s) => ({ ...s, dose: num(s.dose) })),

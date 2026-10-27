@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.verifyOtp({ type, token_hash })
     if (!error) {
       redirect(
-        next ?? (type === "recovery" ? "/change-password" : "/dashboard")
+        next ?? (type === "recovery" ? "/change-password" : "/app")
       )
     }
     reason = error.message
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      redirect(next ?? "/dashboard")
+      redirect(next ?? "/app")
     }
     reason = error.message
   }
