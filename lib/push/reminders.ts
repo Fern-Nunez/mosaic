@@ -36,7 +36,7 @@ const QUOTES: Quote[] = [
   { text: "Just keep swimming.", by: "Dory, Finding Nemo", kinds: ["swim"] },
 ]
 
-const PHRASE: Record<WorkoutKind, string> = { lift: "lift", run: "run", bike: "bike ride", swim: "swim" }
+const PHRASE: Record<WorkoutKind, string> = { lift: "lift", run: "run", bike: "bike ride", swim: "swim", walk: "walk", hike: "hike" }
 
 /** Same quote all day (so a check and the real send match), new one tomorrow. */
 function pickQuote(day: string, kinds: WorkoutKind[]) {

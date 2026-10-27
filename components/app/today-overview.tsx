@@ -3,7 +3,6 @@
 import * as React from "react"
 import Link from "next/link"
 import {
-  Bike,
   BookOpen,
   Check,
   Dumbbell,
@@ -12,7 +11,6 @@ import {
   Scale,
   Utensils,
   Wallet,
-  Waves,
   type LucideIcon,
 } from "lucide-react"
 
@@ -20,6 +18,8 @@ import { usePrefs } from "@/components/app/prefs-context"
 import { CaloriesRadial, MoneyBars, WeightLine } from "@/components/app/today-charts"
 import { useHabits } from "@/components/dashboard/habits-context"
 import { planLabel, workoutPlan, type SectionId } from "@/lib/app/prefs"
+import { incomeTotal, isMoneyIn, netSpent, TX_LABEL } from "@/lib/app/money"
+import { CARDIO, type CardioActivity } from "@/lib/app/workouts"
 import { completedOn, dateKey, isDueOn, scheduleLabel } from "@/lib/habits"
 import type {
   GymRow,
@@ -37,7 +37,7 @@ export type TodayData = {
   transactions: Pick<TransactionRow, "id" | "date" | "amount" | "transaction_type" | "description" | "category">[]
   gym: Pick<GymRow, "id" | "date" | "exercise" | "sets" | "reps" | "weight" | "unit">[]
   runs: RunRow[]
-  cardio: { id: string; date: string; activity: "bike" | "swim"; distance: number | null; distance_unit: string | null; duration_seconds: number | null }[]
+  cardio: { id: string; date: string; activity: CardioActivity; distance: number | null; distance_unit: string | null; duration_seconds: number | null }[]
   sleep: Pick<SleepRow, "id" | "date" | "score" | "hours">[]
   journal: Pick<JournalRow, "id" | "date" | "title" | "mood">[]
   /** Up to 7 most recent weigh-ins, oldest first. */
@@ -234,12 +234,9 @@ export function TodayOverview({ data }: { data: TodayData }) {
   const money = data.transactions.filter(isToday)
   // Money card covers the whole month on the phone's calendar.
   const thisMonth = data.transactions.filter((t) => t.date.slice(0, 7) === today.slice(0, 7))
-  const monthIncome = thisMonth
-    .filter((t) => t.transaction_type === "income")
-    .reduce((sum, t) => sum + Number(t.amount), 0)
-  const monthExpense = thisMonth
-    .filter((t) => t.transaction_type === "expense")
-    .reduce((sum, t) => sum + Number(t.amount), 0)
+  const monthIncome = incomeTotal(thisMonth)
+  // Paid-back money comes off spending (see lib/app/money.ts).
+  const monthExpense = netSpent(thisMonth)
   const monthName = new Date(`${today}T12:00:00`).toLocaleDateString("en-US", { month: "long" })
 
   const lifts = data.gym.filter(isToday)
@@ -247,8 +244,8 @@ export function TodayOverview({ data }: { data: TodayData }) {
   const runs = data.runs.filter(isToday)
   const miles = runs.reduce((sum, r) => sum + Number(r.distance_miles), 0)
   const cardio = data.cardio.filter(isToday)
-  // Rides and swims named the way they'll read in the card hint.
-  const cardioNames = cardio.map((c) => (c.activity === "bike" ? "bike ride" : "swim"))
+  // Rides, swims, walks and hikes named the way they'll read in the card hint.
+  const cardioNames = cardio.map((c) => CARDIO[c.activity].noun.toLowerCase())
 
   // Last night = a sleep entry dated today, or failing that, yesterday.
   const sleep =
@@ -314,8 +311,8 @@ export function TodayOverview({ data }: { data: TodayData }) {
       key: `t-${t.id}`,
       icon: Wallet,
       color: COLORS.money,
-      title: t.description || t.category || (t.transaction_type === "income" ? "Income" : "Expense"),
-      detail: `${t.transaction_type === "income" ? "+" : "−"}${usd.format(Number(t.amount))}`,
+      title: t.description || t.category || TX_LABEL[t.transaction_type],
+      detail: `${isMoneyIn(t) ? "+" : "−"}${usd.format(Number(t.amount))}`,
       href: LINKS.money,
     })),
     ...exercises.map((name) => {
@@ -341,9 +338,9 @@ export function TodayOverview({ data }: { data: TodayData }) {
     })),
     ...cardio.map((c) => ({
       key: `c-${c.id}`,
-      icon: c.activity === "bike" ? Bike : Waves,
+      icon: CARDIO[c.activity].icon,
       color: COLORS.gym,
-      title: c.activity === "bike" ? "Bike ride" : "Swim",
+      title: CARDIO[c.activity].noun,
       detail: [
         c.distance != null ? `${Number(c.distance)} ${c.distance_unit ?? ""}`.trim() : null,
         c.duration_seconds ? `${Math.round(c.duration_seconds / 60)} min` : null,

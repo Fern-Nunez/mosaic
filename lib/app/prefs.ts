@@ -1,13 +1,15 @@
 // Per-user app settings, stored as one JSON object on
 // user_settings.app_prefs (see the app_prefs migration).
 
-export type WorkoutKind = "lift" | "run" | "bike" | "swim"
+export type WorkoutKind = "lift" | "run" | "bike" | "swim" | "walk" | "hike"
 
 export const WORKOUT_KINDS: { id: WorkoutKind; label: string; noun: string }[] = [
   { id: "lift", label: "Lift", noun: "Lift" },
   { id: "run", label: "Run", noun: "Run" },
   { id: "bike", label: "Bike", noun: "Bike ride" },
   { id: "swim", label: "Swim", noun: "Swim" },
+  { id: "walk", label: "Walk", noun: "Walk" },
+  { id: "hike", label: "Hike", noun: "Hike" },
 ]
 
 /** Sections that can be switched off in More → Sections. */

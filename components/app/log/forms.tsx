@@ -18,6 +18,8 @@ import {
   toNumber,
 } from "@/components/app/log/fields"
 import { useHabits } from "@/components/dashboard/habits-context"
+import { TX_LABEL, type TxType } from "@/lib/app/money"
+import { CARDIO, type CardioActivity } from "@/lib/app/workouts"
 import { scheduleLabel, WEEKDAY_SHORT } from "@/lib/habits"
 import { cn } from "@/lib/utils"
 
@@ -71,54 +73,133 @@ const EXPENSE_CATEGORIES = [
   "Entertainment", "Shopping", "Medical", "Personal", "Business", "Gifts", "Travel", "Other",
 ] as const
 
-export function MoneyForm({ ctx }: FormProps) {
-  const [type, setType] = React.useState<"expense" | "income">("expense")
-  const [amount, setAmount] = React.useState("")
-  const [description, setDescription] = React.useState("")
-  const [category, setCategory] = React.useState<string | null>(null)
-  const [date, setDate] = React.useState(ctx.today)
+/** A saved transaction, for editing. */
+export type EditableTransaction = {
+  id: string
+  date: string
+  amount: number
+  transaction_type: TxType
+  category: string | null
+  description: string | null
+  payment_method: string | null
+}
+
+const PAYBACK_METHODS = [
+  { value: "zelle", label: "Zelle" },
+  { value: "venmo", label: "Venmo" },
+  { value: "cash_app", label: "Cash App" },
+  { value: "cash", label: "Cash" },
+] as const
+
+/**
+ * Log money, or (with `existing`) edit or delete a saved transaction.
+ * "Paid back" is for someone sending you money for something you already
+ * logged, like a friend Zelle-ing you for dinner you put on your card.
+ */
+export function MoneyForm({ ctx, existing }: FormProps & { existing?: EditableTransaction }) {
+  const [type, setType] = React.useState<TxType>(existing?.transaction_type ?? "expense")
+  const [amount, setAmount] = React.useState(existing ? Number(existing.amount).toFixed(2) : "")
+  const [description, setDescription] = React.useState(existing?.description ?? "")
+  const [category, setCategory] = React.useState<string | null>(
+    existing && existing.transaction_type !== "income" ? existing.category : null
+  )
+  const [method, setMethod] = React.useState<string | null>(existing?.payment_method ?? (existing ? null : "zelle"))
+  const [date, setDate] = React.useState(existing?.date ?? ctx.today)
+  const [confirmDelete, setConfirmDelete] = React.useState(false)
   const { busy, error, setError, run } = useSave(ctx)
 
   function submit(e: React.FormEvent) {
     e.preventDefault()
     const value = toNumber(amount)
     if (!value || value <= 0) return setError("Enter an amount.")
+    if (type === "reimbursement" && !category) return setError("Pick what it was for, so it comes off the right category.")
+    const row = {
+      date,
+      amount: Math.round(value * 100) / 100,
+      transaction_type: type,
+      category: type === "income" ? "Income" : category,
+      description: description.trim() || null,
+      // Only paybacks ask how it came in; the others keep what they had.
+      payment_method: type === "reimbursement" ? method : type === existing?.transaction_type ? (existing?.payment_method ?? null) : null,
+    }
     run(() =>
-      ctx.supabase.from("transactions").insert({
-        workspace: ctx.workspace,
-        date,
-        amount: Math.round(value * 100) / 100,
-        transaction_type: type,
-        category: type === "income" ? "Income" : category,
-        description: description.trim() || null,
-      })
+      existing
+        ? ctx.supabase.from("transactions").update(row).eq("id", existing.id)
+        : ctx.supabase.from("transactions").insert({ ...row, workspace: ctx.workspace })
     )
   }
+
+  function remove() {
+    if (!existing) return
+    if (!confirmDelete) return setConfirmDelete(true)
+    run(() => ctx.supabase.from("transactions").delete().eq("id", existing.id))
+  }
+
+  const placeholder = { expense: "Chipotle", income: "Paycheck", reimbursement: "Alex for dinner" }[type]
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
       <Segmented
-        options={[{ value: "expense", label: "Expense" }, { value: "income", label: "Income" }] as const}
+        options={[
+          { value: "expense", label: "Expense" },
+          { value: "income", label: "Income" },
+          { value: "reimbursement", label: "Paid back" },
+        ] as const}
         value={type}
-        onChange={setType}
+        onChange={(t) => {
+          setType(t)
+          setConfirmDelete(false)
+        }}
       />
+      {type === "reimbursement" && (
+        <p className="-mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+          Someone paying you back for something you already logged. It lowers your spending instead of counting as income.
+        </p>
+      )}
       <Field label="Amount">
         <div className="relative">
           <span className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-lg text-neutral-500">$</span>
           <NumberInput value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="h-14 pl-8 text-2xl tabular-nums" />
         </div>
       </Field>
-      <Field label="What for">
-        <TextInput value={description} onChange={(e) => setDescription(e.target.value)} placeholder={type === "income" ? "Paycheck" : "Chipotle"} />
+      <Field label={type === "reimbursement" ? "Who / what for" : "What for"}>
+        <TextInput value={description} onChange={(e) => setDescription(e.target.value)} placeholder={placeholder} />
       </Field>
-      {type === "expense" && (
-        <FieldGroup label="Category">
-          <Choice options={EXPENSE_CATEGORIES.map((c) => ({ value: c, label: c }))} value={category} onChange={setCategory} />
+      {type === "reimbursement" && (
+        <FieldGroup label="How">
+          <Choice options={PAYBACK_METHODS as readonly { value: string; label: string }[]} value={method} onChange={(m) => setMethod(m === method ? null : m)} />
+        </FieldGroup>
+      )}
+      {type !== "income" && (
+        <FieldGroup label={type === "reimbursement" ? "It was for" : "Category"}>
+          <Choice
+            options={EXPENSE_CATEGORIES.map((c) => ({ value: c, label: c }))}
+            value={category}
+            onChange={(c) => {
+              setCategory(c)
+              setError(null)
+            }}
+          />
         </FieldGroup>
       )}
       <DateField value={date} onChange={setDate} />
       <ErrorText>{error}</ErrorText>
-      <SaveButton busy={busy}>Save {type}</SaveButton>
+      <SaveButton busy={busy}>{existing ? "Save changes" : `Save ${TX_LABEL[type].toLowerCase()}`}</SaveButton>
+      {existing && (
+        <button
+          type="button"
+          onClick={remove}
+          disabled={busy}
+          className={cn(
+            "h-12 cursor-pointer rounded-xl text-base font-medium transition-colors disabled:opacity-50",
+            confirmDelete
+              ? "bg-red-600 text-white active:bg-red-700"
+              : "bg-neutral-100 text-red-600 active:bg-neutral-200 dark:bg-neutral-800 dark:text-red-400"
+          )}
+        >
+          {confirmDelete ? "Tap again to delete" : "Delete transaction"}
+        </button>
+      )}
     </form>
   )
 }
@@ -128,7 +209,7 @@ export function MoneyForm({ ctx }: FormProps) {
 type LiftRow = { exercise: string; sets: number | null; reps: number | null; weight: number | null; unit: string | null }
 
 export function WorkoutForm({ ctx }: FormProps) {
-  const [mode, setMode] = React.useState<"lift" | "run" | "bike" | "swim">("lift")
+  const [mode, setMode] = React.useState<"lift" | "run" | CardioActivity>("lift")
   const [exercise, setExercise] = React.useState("")
   const [sets, setSets] = React.useState("3")
   const [reps, setReps] = React.useState("")
@@ -173,7 +254,7 @@ export function WorkoutForm({ ctx }: FormProps) {
 
   function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (mode === "bike" || mode === "swim") {
+    if (mode !== "lift" && mode !== "run") {
       const distance = toNumber(miles)
       const mins = toNumber(minutes)
       if ((distance === null || distance <= 0) && (mins === null || mins <= 0)) {
@@ -191,6 +272,9 @@ export function WorkoutForm({ ctx }: FormProps) {
         })
         if (res.error && missingTable(res.error.message)) {
           return { error: { message: "Bike rides and swims need the cardio SQL run in Supabase first." } }
+        }
+        if (res.error && /check constraint|activity/i.test(res.error.message)) {
+          return { error: { message: "Walks and hikes need the new SQL run in Supabase first (paid back + walk/hike)." } }
         }
         return res
       })
@@ -233,9 +317,8 @@ export function WorkoutForm({ ctx }: FormProps) {
         options={[
           { value: "lift", label: "Lift" },
           { value: "run", label: "Run" },
-          { value: "bike", label: "Bike" },
-          { value: "swim", label: "Swim" },
-        ] as const}
+          ...(Object.keys(CARDIO) as CardioActivity[]).map((k) => ({ value: k, label: CARDIO[k].label })),
+        ]}
         value={mode}
         onChange={setMode}
       />
@@ -261,11 +344,11 @@ export function WorkoutForm({ ctx }: FormProps) {
               <NumberInput
                 value={miles}
                 onChange={(e) => setMiles(e.target.value)}
-                placeholder={mode === "run" ? "3.1" : mode === "bike" ? "12" : "1000"}
+                placeholder={{ run: "3.1", bike: "12", swim: "1000", walk: "2", hike: "5" }[mode]}
               />
             </Field>
             <Field label="Time" hint="minutes">
-              <NumberInput value={minutes} onChange={(e) => setMinutes(e.target.value)} placeholder={mode === "bike" ? "45" : "28"} />
+              <NumberInput value={minutes} onChange={(e) => setMinutes(e.target.value)} placeholder={{ run: "28", bike: "45", swim: "28", walk: "40", hike: "120" }[mode]} />
             </Field>
           </div>
           {mode === "swim" && (
@@ -275,7 +358,7 @@ export function WorkoutForm({ ctx }: FormProps) {
       )}
       <DateField value={date} onChange={setDate} />
       <ErrorText>{error}</ErrorText>
-      <SaveButton busy={busy}>{{ lift: "Save lift", run: "Save run", bike: "Save ride", swim: "Save swim" }[mode]}</SaveButton>
+      <SaveButton busy={busy}>{{ lift: "Save lift", run: "Save run", bike: "Save ride", swim: "Save swim", walk: "Save walk", hike: "Save hike" }[mode]}</SaveButton>
     </form>
   )
 }

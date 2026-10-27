@@ -165,7 +165,7 @@ export async function GET(request: Request) {
   const checked = new Set(completions.map((c) => c.date))
   const loggedDays = days.filter(
     (d) =>
-      d.calories != null || d.spent > 0 || d.fixed > 0 || d.income > 0 || d.workout.length > 0 ||
+      d.calories != null || d.spent > 0 || d.fixed > 0 || d.paidBack > 0 || d.income > 0 || d.workout.length > 0 ||
       d.sleepHours != null || d.journaled || d.weight != null || d.supplements > 0 || checked.has(d.date)
   ).length
   return NextResponse.json({ loggedDays })

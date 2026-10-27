@@ -3,6 +3,7 @@
 
 import { buildBuckets, inRange, shiftKey, windowStarts, type Bucket, type Range } from "@/lib/app/dates"
 import type { TrendCategory, TrendData } from "@/lib/app/trend-data"
+import { incomeTotal, netSpent } from "@/lib/app/money"
 import { isDueOn, type Completion, type Habit } from "@/lib/habits"
 
 export type Window = {
@@ -83,11 +84,11 @@ export function summarize(
 ): Summary {
   switch (category) {
     case "money": {
-      const expense = (rows: TrendData["transactions"]) =>
-        sum(rows.filter((t) => t.transaction_type === "expense"), (t) => t.amount)
+      // Paybacks (Zelle etc.) come off spending; they aren't income.
+      const expense = (rows: TrendData["transactions"]) => netSpent(rows)
       const now = data.transactions.filter(cur(w))
       const spent = expense(now)
-      const income = sum(now.filter((t) => t.transaction_type === "income"), (t) => t.amount)
+      const income = incomeTotal(now)
       return {
         value: usd.format(spent),
         sub: income > 0 ? `spent · ${usd.format(income)} in` : "spent",

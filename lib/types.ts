@@ -3,7 +3,8 @@ export type TransactionRow = {
   date: string
   amount: number
   category: string | null
-  transaction_type: "income" | "expense"
+  /** "reimbursement" = paid back (see lib/app/money.ts). */
+  transaction_type: "income" | "expense" | "reimbursement"
   payment_method: string | null
   description: string | null
   account_id: string | null

@@ -65,6 +65,8 @@ export function monthlyMoney(
     if (!bucket) continue
     const amount = Number(row.amount) || 0
     if (row.transaction_type === "income") bucket.income += amount
+    // Paid back (new app): lowers spending, isn't income.
+    else if (row.transaction_type === "reimbursement") bucket.expenses -= amount
     else bucket.expenses += amount
   }
   return buckets.map((b) => ({
@@ -99,8 +101,8 @@ export function categorySpend(
     if (row.transaction_type === "expense") {
       totals.set(cat, (totals.get(cat) ?? 0) + amount)
     } else if (
-      row.transaction_type === "income" &&
-      row.payment_method === "zelle"
+      row.transaction_type === "reimbursement" ||
+      (row.transaction_type === "income" && row.payment_method === "zelle")
     ) {
       totals.set(cat, (totals.get(cat) ?? 0) - amount)
     }
@@ -140,7 +142,7 @@ export function paymentMethodTotals(
     const method = row.payment_method?.trim() || "Other"
     const entry = totals.get(method) ?? { received: 0, sent: 0 }
     const amount = Number(row.amount) || 0
-    if (row.transaction_type === "income") entry.received += amount
+    if (row.transaction_type !== "expense") entry.received += amount
     else entry.sent += amount
     totals.set(method, entry)
   }
@@ -182,7 +184,7 @@ export function accountActivity(
     const account = byId.get(row.account_id)
     if (!account) continue
     const amount = Number(row.amount) || 0
-    if (row.transaction_type === "income") account.moneyIn += amount
+    if (row.transaction_type !== "expense") account.moneyIn += amount
     else account.moneyOut += amount
   }
   return [...byId.values()].map((a) => ({
@@ -200,6 +202,7 @@ export function moneyTotalsThisMonth(rows: TransactionRow[]) {
     if (!row.date.startsWith(monthKey)) continue
     const amount = Number(row.amount) || 0
     if (row.transaction_type === "income") income += amount
+    else if (row.transaction_type === "reimbursement") expenses -= amount
     else expenses += amount
   }
   return { income, expenses, net: income - expenses }

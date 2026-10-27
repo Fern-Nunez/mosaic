@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Bike, Check, Dumbbell, Footprints, Waves, type LucideIcon } from "lucide-react"
+import { Check, Dumbbell, Footprints, type LucideIcon } from "lucide-react"
 
 import { CATEGORY_META } from "@/components/app/trends/meta"
 import { RangePicker } from "@/components/app/trends/range-picker"
@@ -17,11 +17,12 @@ import {
   PointLine,
   StatGrid,
 } from "@/components/app/trends/detail-parts"
+import { TransactionEditor } from "@/components/app/trends/transaction-editor"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToday } from "@/components/app/use-today"
 import { useHabits } from "@/components/dashboard/habits-context"
 import { inRange, keyToDate, monthsBetween, periodStart, shiftKey, type Range } from "@/lib/app/dates"
-import { categoryColor, transactionIcon } from "@/lib/app/money"
+import { categoryColor, incomeTotal, isMoneyIn, netSpent, spentByCategory, transactionIcon, TX_LABEL } from "@/lib/app/money"
 import {
   distinctDays,
   habitRate,
@@ -40,6 +41,7 @@ import {
 import type { TrendCategory, TrendData } from "@/lib/app/trend-data"
 import { isDueOn } from "@/lib/habits"
 import { DEFAULT_SLEEP_GOAL, planLabel, weeklyWorkoutGoal, workoutPlan, type WorkoutKind } from "@/lib/app/prefs"
+import { CARDIO, type CardioActivity } from "@/lib/app/workouts"
 import { cn } from "@/lib/utils"
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
@@ -114,17 +116,13 @@ const calendarMonths = (w: Window) =>
 
 function MoneyDetail({ data, w, rangeLabel }: DetailProps) {
   const rows = data.transactions.filter(inWindow(w))
-  const expenses = rows.filter((t) => t.transaction_type === "expense")
-  const income = sum(rows.filter((t) => t.transaction_type === "income"), (t) => t.amount)
-  const spent = sum(expenses, (t) => t.amount)
+  // Paid-back money (Zelle etc.) lowers spending in its category; it isn't income.
+  const income = incomeTotal(rows)
+  const spent = netSpent(rows)
   const saved = income - spent
+  const paidBack = sum(rows.filter((t) => t.transaction_type === "reimbursement"), (t) => t.amount)
 
-  const byCategory = new Map<string, number>()
-  for (const t of expenses) {
-    const key = t.category || "Other"
-    byCategory.set(key, (byCategory.get(key) ?? 0) + t.amount)
-  }
-  const categories = [...byCategory.entries()]
+  const categories = [...spentByCategory(rows).entries()]
     .map(([label, value]) => ({ label, value: Math.round(value), color: categoryColor(label) }))
     .sort((a, b) => b.value - a.value)
     .slice(0, 8)
@@ -133,6 +131,11 @@ function MoneyDetail({ data, w, rangeLabel }: DetailProps) {
     <>
       <Panel title="Made vs. spent" subtitle={rangeLabel}>
         <IncomeRadial income={income} spent={spent} format={(v) => usd.format(v)} />
+        {paidBack > 0 && (
+          <p className="-mt-1 text-center text-sm text-neutral-500 dark:text-neutral-400">
+            Spent is after {usd.format(paidBack)} paid back.
+          </p>
+        )}
         <p className="text-center text-sm text-neutral-500 dark:text-neutral-400">
           {income === 0
             ? "No income logged in this range."
@@ -152,11 +155,13 @@ function MoneyDetail({ data, w, rangeLabel }: DetailProps) {
   )
 }
 
-/** Scrollable list: icon, what it was, category and date, amount. */
+/** Scrollable list: icon, what it was, category and date, amount. Tap one to edit or delete it. */
 function TransactionList({ rows }: { rows: TrendData["transactions"] }) {
   const sorted = [...rows].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+  const [editing, setEditing] = React.useState<TrendData["transactions"][number] | null>(null)
   return (
-    <Panel title="Transactions" subtitle={`${rows.length} in this range`}>
+    <Panel title="Transactions" subtitle={`${rows.length} in this range · tap one to edit`}>
+      <TransactionEditor transaction={editing} onClose={() => setEditing(null)} />
       {sorted.length === 0 ? (
         <p className="text-sm text-neutral-500 dark:text-neutral-400">No transactions in this range.</p>
       ) : (
@@ -164,10 +169,16 @@ function TransactionList({ rows }: { rows: TrendData["transactions"] }) {
         <ScrollArea className="-mx-5 h-[440px]">
           <ul className="px-3">
             {sorted.map((t) => {
-              const color = t.transaction_type === "income" ? categoryColor("Income") : categoryColor(t.category)
+              const color =
+                t.transaction_type === "income" ? categoryColor("Income") : t.transaction_type === "reimbursement" ? categoryColor("Paid back") : categoryColor(t.category)
               const Icon = transactionIcon(t)
               return (
-                <li key={t.id} className="flex min-h-16 items-center gap-3 border-t border-neutral-100 py-2.5 first:border-t-0 dark:border-neutral-800">
+                <li key={t.id} className="border-t border-neutral-100 first:border-t-0 dark:border-neutral-800">
+                  <button
+                    type="button"
+                    onClick={() => setEditing(t)}
+                    className="-mx-2 flex min-h-16 w-[calc(100%+1rem)] cursor-pointer items-center gap-3 rounded-xl px-2 py-2.5 text-left active:bg-neutral-50 dark:active:bg-neutral-800"
+                  >
                   <span
                     aria-hidden
                     className="flex size-10 shrink-0 items-center justify-center rounded-full"
@@ -177,22 +188,28 @@ function TransactionList({ rows }: { rows: TrendData["transactions"] }) {
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[15px] font-medium text-neutral-900 dark:text-neutral-100">
-                      {t.description || t.category || cap(t.transaction_type)}
+                      {t.description || t.category || TX_LABEL[t.transaction_type]}
                     </p>
                     <p className="truncate text-sm text-neutral-500 dark:text-neutral-400">
-                      {t.transaction_type === "income" ? "Income" : t.category || "Other"} ·{" "}
+                      {t.transaction_type === "income"
+                        ? "Income"
+                        : t.transaction_type === "reimbursement"
+                          ? `Paid back${t.category ? ` · ${t.category}` : ""}`
+                          : t.category || "Other"}{" "}
+                      ·{" "}
                       {keyToDate(t.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
                     </p>
                   </div>
                   <span
                     className={cn(
                       "shrink-0 text-[15px] font-medium tabular-nums",
-                      t.transaction_type === "income" ? "text-[#3F7458] dark:text-[#7FBF9A]" : "text-neutral-900 dark:text-neutral-100"
+                      isMoneyIn(t) ? "text-[#3F7458] dark:text-[#7FBF9A]" : "text-neutral-900 dark:text-neutral-100"
                     )}
                   >
-                    {t.transaction_type === "income" ? "+" : "−"}
+                    {isMoneyIn(t) ? "+" : "−"}
                     {usdCents.format(t.amount)}
                   </span>
+                  </button>
                 </li>
               )
             })}
@@ -307,10 +324,9 @@ function toMiles(c: TrendData["cardio"][number]) {
 function WorkoutDetail({ data, w }: DetailProps) {
   const lifts = data.gym.filter(inWindow(w))
   const runs = data.runs.filter(inWindow(w))
-  const rides = data.cardio.filter((c) => c.activity === "bike").filter(inWindow(w))
-  const swims = data.cardio.filter((c) => c.activity === "swim").filter(inWindow(w))
+  const cardio = data.cardio.filter(inWindow(w))
+  const of = (a: CardioActivity) => cardio.filter((c) => c.activity === a)
   const runMiles = sum(runs, (r) => r.distance_miles)
-  const rideMiles = sum(rides, toMiles)
   const days = workoutDays(data)
   const inRangeDays = [...days].filter((d) => inRange(d, w.start, w.today)).length
   // Sunday through today, for the weekly goal.
@@ -357,8 +373,11 @@ function WorkoutDetail({ data, w }: DetailProps) {
             : []),
           { label: "Exercises", value: String(exercises.size) },
           { label: "Runs", value: String(runs.length), hint: runMiles ? `${runMiles.toFixed(1)} mi` : undefined },
-          { label: "Rides", value: String(rides.length), hint: rideMiles ? `${rideMiles.toFixed(1)} mi` : undefined },
-          { label: "Swims", value: String(swims.length) },
+          // Rides, swims, walks, hikes: count, plus miles where it's in miles/km.
+          ...(Object.keys(CARDIO) as CardioActivity[]).map((a) => {
+            const miles = sum(of(a), toMiles)
+            return { label: CARDIO[a].plural, value: String(of(a).length), hint: miles ? `${miles.toFixed(1)} mi` : undefined }
+          }),
         ]}
       />
       {plan && <WeekPlan data={data} plan={plan} today={w.today} weekStart={weekStart} />}
@@ -385,10 +404,10 @@ function WorkoutDetail({ data, w }: DetailProps) {
             title: "🏃 Run",
             detail: `${r.distance_miles.toFixed(1)} mi · ${Math.round(r.duration_seconds / 60)} min`,
           })),
-          ...[...rides, ...swims].map((c) => ({
+          ...cardio.map((c) => ({
             key: c.id,
             date: c.date,
-            title: c.activity === "bike" ? "🚴 Bike ride" : "🏊 Swim",
+            title: `${CARDIO[c.activity].emoji} ${CARDIO[c.activity].noun}`,
             detail: [cardioDistance(c), minutes(c.duration_seconds)].filter(Boolean).join(" · ") || undefined,
           })),
         ]}
@@ -397,7 +416,11 @@ function WorkoutDetail({ data, w }: DetailProps) {
   )
 }
 
-const KIND_ICON: Record<WorkoutKind, LucideIcon> = { lift: Dumbbell, run: Footprints, bike: Bike, swim: Waves }
+const KIND_ICON: Record<WorkoutKind, LucideIcon> = {
+  lift: Dumbbell,
+  run: Footprints,
+  ...Object.fromEntries((Object.keys(CARDIO) as CardioActivity[]).map((a) => [a, CARDIO[a].icon])),
+} as Record<WorkoutKind, LucideIcon>
 const DAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"]
 
 /** Sunday to Saturday of this week: what was planned, and whether it got done. */

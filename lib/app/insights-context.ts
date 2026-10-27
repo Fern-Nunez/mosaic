@@ -31,6 +31,8 @@ export type Day = {
   /** Everyday spending: expenses minus fixed costs like rent and bills. */
   spent: number
   fixed: number
+  /** Paid back to you (Zelle etc.) for earlier expenses. Not income. */
+  paidBack: number
   income: number
   workout: string[]
   sleepHours: number | null
@@ -51,7 +53,7 @@ export function buildDays(data: TrendData, habits: HabitsData, today: string): D
   const days = new Map<string, Day>()
   for (let d = start; d <= today; d = shiftKey(d, 1)) {
     days.set(d, {
-      date: d, calories: null, protein: null, spent: 0, fixed: 0, income: 0, workout: [],
+      date: d, calories: null, protein: null, spent: 0, fixed: 0, paidBack: 0, income: 0, workout: [],
       sleepHours: null, sleepScore: null, mood: null, journaled: false, weight: null,
       habitsDone: 0, habitsDue: 0, supplements: 0,
     })
@@ -67,7 +69,8 @@ export function buildDays(data: TrendData, habits: HabitsData, today: string): D
   for (const t of data.transactions) {
     const d = at(t.date)
     if (!d) continue
-    if (t.transaction_type !== "expense") d.income += Number(t.amount)
+    if (t.transaction_type === "income") d.income += Number(t.amount)
+    else if (t.transaction_type === "reimbursement") d.paidBack += Number(t.amount)
     else if (FIXED_COSTS.has(t.category ?? "")) d.fixed += Number(t.amount)
     else d.spent += Number(t.amount)
   }
@@ -172,8 +175,9 @@ export function buildInsightsContext(
     const spent = days.reduce((s, d) => s + d.spent, 0)
     const fixed = days.reduce((s, d) => s + d.fixed, 0)
     const income = days.reduce((s, d) => s + d.income, 0)
+    const paidBack = days.reduce((s, d) => s + d.paidBack, 0)
     summary.push(
-      `Money: earned $${round(income, 0)}, spent $${round(spent + fixed, 0)} over ${DAYS} days: $${round(fixed, 0)} fixed costs (rent, bills) and $${round(spent, 0)} everyday spending ($${round(spent / DAYS)}/day). Daily numbers below are everyday spending only.`
+      `Money: earned $${round(income, 0)}, spent $${round(Math.max(0, spent + fixed - paidBack), 0)} net over ${DAYS} days: $${round(fixed, 0)} fixed costs (rent, bills) and $${round(spent, 0)} everyday spending ($${round(spent / DAYS)}/day)${paidBack ? `, minus $${round(paidBack, 0)} friends paid back (not income)` : ""}. Daily numbers below are everyday spending before paybacks.`
     )
   }
   if (on("nutrition")) {

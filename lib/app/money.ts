@@ -13,6 +13,7 @@ import {
   Dumbbell,
   Fuel,
   Gift,
+  HandCoins,
   House,
   Lightbulb,
   Music,
@@ -45,6 +46,7 @@ const CATEGORY_STYLE: Record<string, { color: string; icon: LucideIcon }> = {
   Gifts: { color: "#A86A84", icon: Gift },
   Travel: { color: "#5F7FB0", icon: Plane },
   Income: { color: "#4E8A6B", icon: Banknote },
+  "Paid back": { color: "#3E9A8C", icon: HandCoins },
   Other: { color: "#9A938B", icon: CircleDollarSign },
 }
 
@@ -63,6 +65,44 @@ const KEYWORDS: [RegExp, LucideIcon][] = [
   [/juice|smoothie|boba/i, CupSoda],
 ]
 
+/**
+ * "reimbursement" = someone paying you back (Zelle, Venmo, cash) for
+ * something you already logged as an expense. It isn't income: it lowers
+ * what you spent, in the category it covers.
+ */
+export type TxType = "income" | "expense" | "reimbursement"
+
+export const TX_LABEL: Record<TxType, string> = { expense: "Expense", income: "Income", reimbursement: "Paid back" }
+
+type Amounted = { amount: number | string; transaction_type: TxType; category?: string | null }
+
+const total = (rows: Amounted[], type: TxType) =>
+  rows.filter((t) => t.transaction_type === type).reduce((s, t) => s + Number(t.amount), 0)
+
+/** Expenses minus what people paid you back. Never below zero. */
+export function netSpent(rows: Amounted[]) {
+  return Math.max(0, total(rows, "expense") - total(rows, "reimbursement"))
+}
+
+export function incomeTotal(rows: Amounted[]) {
+  return total(rows, "income")
+}
+
+/** Spending per category, with paybacks taken off the category they cover. */
+export function spentByCategory(rows: Amounted[]) {
+  const by = new Map<string, number>()
+  for (const t of rows) {
+    if (t.transaction_type === "income") continue
+    const key = t.category || "Other"
+    const sign = t.transaction_type === "reimbursement" ? -1 : 1
+    by.set(key, (by.get(key) ?? 0) + sign * Number(t.amount))
+  }
+  return new Map([...by].filter(([, v]) => v > 0))
+}
+
+/** Money coming in (shown with a + and in green). */
+export const isMoneyIn = (t: { transaction_type: TxType }) => t.transaction_type !== "expense"
+
 export function categoryColor(category: string | null | undefined): string {
   return CATEGORY_STYLE[category ?? "Other"]?.color ?? CATEGORY_STYLE.Other.color
 }
@@ -70,8 +110,9 @@ export function categoryColor(category: string | null | undefined): string {
 export function transactionIcon(t: {
   description: string | null
   category: string | null
-  transaction_type: "income" | "expense"
+  transaction_type: TxType
 }): LucideIcon {
+  if (t.transaction_type === "reimbursement") return CATEGORY_STYLE["Paid back"].icon
   const hit = KEYWORDS.find(([re]) => re.test(t.description ?? ""))
   if (hit) return hit[1]
   if (t.transaction_type === "income") return CATEGORY_STYLE.Income.icon

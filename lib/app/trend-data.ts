@@ -3,7 +3,9 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js"
 
+import type { TxType } from "@/lib/app/money"
 import { readPrefs, type AppPrefs } from "@/lib/app/prefs"
+import type { CardioActivity } from "@/lib/app/workouts"
 import { DEFAULT_NUTRITION_GOALS } from "@/lib/stats"
 import { dateKey, earliestNeeded, shiftKey, type RangeId } from "@/lib/app/dates"
 
@@ -25,12 +27,12 @@ export function isTrendCategory(value: string): value is TrendCategory {
 }
 
 export type TrendData = {
-  transactions: { id: string; date: string; amount: number; transaction_type: "income" | "expense"; category: string | null; description: string | null }[]
+  transactions: { id: string; date: string; amount: number; transaction_type: TxType; category: string | null; description: string | null; payment_method: string | null }[]
   nutrition: { id: string; date: string; meal_type: string | null; food_name: string; calories: number | null; protein: number | null; carbs: number | null; fat: number | null; fiber: number | null }[]
   gym: { id: string; date: string; exercise: string; sets: number | null; reps: number | null; weight: number | null; unit: string | null }[]
   runs: { id: string; date: string; distance_miles: number; duration_seconds: number }[]
-  /** Bike rides and swims. Empty until the cardio migration is run. */
-  cardio: { id: string; date: string; activity: "bike" | "swim"; distance: number | null; distance_unit: string | null; duration_seconds: number | null }[]
+  /** Rides, swims, walks and hikes. Empty until the cardio migration is run. */
+  cardio: { id: string; date: string; activity: CardioActivity; distance: number | null; distance_unit: string | null; duration_seconds: number | null }[]
   cardioReady: boolean
   sleep: { id: string; date: string; hours: number | null; score: number | null }[]
   journal: { id: string; date: string; title: string | null; entry: string; mood: string | null }[]
@@ -83,7 +85,7 @@ export async function loadTrendData(
 
   const [transactions, nutrition, gym, runs, cardio, sleep, journal, weights, before, supplements, stack, settings] =
     await Promise.all([
-      want("money") ? scoped("transactions", "id, date, amount, transaction_type, category, description") : empty,
+      want("money") ? scoped("transactions", "id, date, amount, transaction_type, category, description, payment_method") : empty,
       want("nutrition") ? scoped("nutrition", "id, date, meal_type, food_name, calories, protein, carbs, fat, fiber") : empty,
       want("workout") ? scoped("gym_weight", "id, date, exercise, sets, reps, weight, unit") : empty,
       want("workout") ? scoped("runs", "id, date, distance_miles, duration_seconds") : empty,

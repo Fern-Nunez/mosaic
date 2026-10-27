@@ -265,7 +265,7 @@ function WorkoutSettings({ data, userId, done }: FormProps) {
               <span className="text-[15px] font-medium">{DAY_NAMES[day]}</span>
               <span className="text-xs text-neutral-500 dark:text-neutral-400">{planLabel(kinds) ?? "Rest"}</span>
             </div>
-            <div className="grid grid-cols-4 gap-1.5" role="group" aria-label={`${DAY_NAMES[day]} workouts`}>
+            <div className="grid grid-cols-3 gap-1.5" role="group" aria-label={`${DAY_NAMES[day]} workouts`}>
               {WORKOUT_KINDS.map((w) => {
                 const picked = kinds.includes(w.id)
                 return (

@@ -491,7 +491,8 @@ export function MoneySection({
                 <ul className="divide-y">
                   {recent.map((t) => {
                     const Icon = categoryIcon(t.category)
-                    const income = t.transaction_type === "income"
+                    // Paid back counts as money in (shown with +).
+                    const income = t.transaction_type !== "expense"
                     return (
                       <li
                         key={t.id}
