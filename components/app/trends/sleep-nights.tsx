@@ -4,7 +4,7 @@ import { keyToDate, shiftKey } from "@/lib/app/dates"
 import { hoursLabel } from "@/lib/app/metrics"
 import { cn } from "@/lib/utils"
 
-const COLOR = "#8A7BB8"
+const COLOR = "#8B6CF0"
 const NIGHTS = 5
 
 /**

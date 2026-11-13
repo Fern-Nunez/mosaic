@@ -1,12 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server"
 
-import { todayIn, workoutReminder } from "@/lib/push/reminders"
+import { billReminder, todayIn } from "@/lib/push/reminders"
 import { sendToSubscriptions, type SubscriptionRow } from "@/lib/push/send"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 /**
- * The daily reminder. Vercel Cron calls this once a day (see vercel.json)
- * with `Authorization: Bearer $CRON_SECRET`.
+ * The daily reminder (bill day). Vercel Cron calls this once a day (see
+ * vercel.json) with `Authorization: Bearer $CRON_SECRET`. Reminders with a
+ * time you pick (workout, journal) are in /api/reminders/timed.
  *
  * Testing on your computer: open
  *   http://localhost:3000/api/reminders?secret=YOUR_CRON_SECRET&dry=1
@@ -33,15 +34,15 @@ export async function GET(request: NextRequest) {
     const results = []
     for (const [userId, subs] of byUser) {
       const day = todayIn(subs[0].timezone)
-      const reminder = await workoutReminder(admin, userId, day)
+      const reminder = await billReminder(admin, userId, day)
       if (!reminder.send || dry) {
-        results.push({ userId, day, devices: subs.length, ...reminder, sent: 0 })
+        results.push({ userId, kind: "bills", day, devices: subs.length, ...reminder, sent: 0 })
         continue
       }
       const sent = await sendToSubscriptions(admin, subs, reminder)
-      results.push({ userId, day, devices: subs.length, ...reminder, ...sent })
+      results.push({ userId, kind: "bills", day, devices: subs.length, ...reminder, ...sent })
     }
-    return NextResponse.json({ dry, users: results.length, results })
+    return NextResponse.json({ dry, users: byUser.size, results })
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Something went wrong" }, { status: 500 })
   }

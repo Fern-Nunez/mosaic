@@ -83,10 +83,10 @@ export function Choice<T extends string>({
           onClick={() => onChange(o.value)}
           aria-pressed={value === o.value}
           className={cn(
-            "h-10 cursor-pointer rounded-full px-4 text-sm transition-colors",
+            "h-10 cursor-pointer rounded-full border px-4 text-sm transition-colors",
             value === o.value
-              ? "bg-[#318E63] text-white"
-              : "bg-neutral-100 text-neutral-700 active:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:active:bg-neutral-700"
+              ? "gloss"
+              : "chip text-neutral-700 dark:text-neutral-300"
           )}
         >
           {o.label}
@@ -108,7 +108,7 @@ export function Segmented<T extends string>({
 }) {
   return (
     <div
-      className="grid rounded-xl bg-neutral-100 p-1 dark:bg-neutral-800"
+      className="chip grid rounded-full p-1"
       style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
     >
       {options.map((o) => (
@@ -118,10 +118,10 @@ export function Segmented<T extends string>({
           onClick={() => onChange(o.value)}
           aria-pressed={value === o.value}
           className={cn(
-            "h-10 cursor-pointer rounded-lg text-sm transition-colors",
+            "h-10 cursor-pointer rounded-full border text-sm transition-colors",
             value === o.value
-              ? "bg-white font-medium text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-neutral-100"
-              : "text-neutral-500 dark:text-neutral-400"
+              ? "border-black/15 bg-white font-medium text-neutral-900 shadow-sm dark:border-white/25 dark:bg-white/15 dark:text-white"
+              : "border-transparent text-neutral-500 dark:text-neutral-400"
           )}
         >
           {o.label}
@@ -172,7 +172,7 @@ export function SaveButton({
     <button
       type="submit"
       disabled={busy || disabled}
-      className="mt-2 h-12 w-full cursor-pointer rounded-xl bg-[#318E63] text-base font-medium text-white transition-opacity active:opacity-90 disabled:cursor-default disabled:opacity-40"
+      className="chip mt-2 h-12 w-full cursor-pointer rounded-full border-black/15! text-base font-medium text-neutral-900 transition-transform active:scale-[0.98] disabled:cursor-default disabled:opacity-40 dark:border-white/25! dark:text-neutral-100"
     >
       {busy ? "Saving…" : children}
     </button>

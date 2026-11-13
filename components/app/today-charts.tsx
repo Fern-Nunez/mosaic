@@ -3,8 +3,6 @@
 import Link from "next/link"
 import { TrendingDown, TrendingUp } from "lucide-react"
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
   Label,
   LabelList,
@@ -18,7 +16,6 @@ import {
   YAxis,
 } from "recharts"
 
-import { StartTick } from "@/components/app/chart-ticks"
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart"
 
 const usd = new Intl.NumberFormat("en-US", {
@@ -47,7 +44,7 @@ function ChartCard({
 }) {
   const TrendIcon = trend === "down" ? TrendingDown : TrendingUp
   return (
-    <Link href={href} className="flex flex-col gap-4 rounded-2xl bg-white dark:bg-neutral-900 p-5 active:bg-neutral-50 dark:active:bg-neutral-800">
+    <Link href={href} className="flex flex-col gap-4 glass rounded-2xl p-5 transition-transform active:scale-[0.985]">
       <div>
         <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">{title}</h2>
         <p className="text-sm text-neutral-500 dark:text-neutral-400">{subtitle}</p>
@@ -71,7 +68,7 @@ function ChartCard({
 /* ------------------------------------------------- Calories: radial text */
 
 const caloriesConfig = {
-  calories: { label: "Calories", color: "#C9A24A" },
+  calories: { label: "Calories", color: "#F2B33D" },
 } satisfies ChartConfig
 
 export function CaloriesRadial({
@@ -130,12 +127,6 @@ export function CaloriesRadial({
 
 /* ---------------------------------------------- Money: horizontal bars */
 
-const moneyConfig = {
-  income: { label: "Income", color: "#4E8A6B" },
-  expense: { label: "Expense", color: "#C8735F" },
-  saved: { label: "Saved", color: "#6A7FB8" },
-} satisfies ChartConfig
-
 export function MoneyBars({
   href,
   month,
@@ -148,11 +139,13 @@ export function MoneyBars({
   expense: number
 }) {
   const saved = income - expense
-  const data = [
-    { key: "income", label: "Income", value: income, fill: "var(--color-income)" },
-    { key: "expense", label: "Expense", value: expense, fill: "var(--color-expense)" },
-    { key: "saved", label: "Saved", value: saved, fill: "var(--color-saved)" },
+  // Spending more than you made means you saved nothing, not a negative.
+  const rows = [
+    { label: "Income", value: income, color: "#2FA36B" },
+    { label: "Spent", value: expense, color: "#EE6C4D" },
+    { label: "Saved", value: Math.max(saved, 0), color: "#4F7CF0" },
   ]
+  const max = Math.max(income, expense, 1)
   const rate = income > 0 ? Math.round((saved / income) * 100) : null
 
   return (
@@ -172,22 +165,28 @@ export function MoneyBars({
       trend={income === 0 && expense === 0 ? undefined : saved >= 0 ? "up" : "down"}
       footerNote="Income, spending, and what's left"
     >
-      <ChartContainer config={moneyConfig} className="aspect-auto h-[150px] w-full">
-        <BarChart data={data} layout="vertical" margin={{ left: 0, right: 64 }}>
-          <YAxis dataKey="label" type="category" tickLine={false} axisLine={false} width={64} tick={<StartTick />} />
-          <XAxis type="number" dataKey="value" hide domain={[Math.min(0, saved), "dataMax"]} />
-          <Bar dataKey="value" radius={6} isAnimationActive={false}>
-            <LabelList
-              dataKey="value"
-              position="right"
-              offset={8}
-              className="fill-neutral-900 dark:fill-neutral-100"
-              fontSize={12}
-              formatter={(value) => usd.format(Number(value))}
-            />
-          </Bar>
-        </BarChart>
-      </ChartContainer>
+      {/* Three columns on a baseline: amount on top, bar, label under it.
+          A $0 column is a short stub so it still reads as "nothing". */}
+      <div className="flex flex-col gap-2">
+        <div className="flex h-[150px] items-end justify-around gap-4 border-b border-black/10 dark:border-white/15">
+          {rows.map((r) => (
+            <div key={r.label} className="flex h-full w-16 flex-col items-center justify-end gap-1.5">
+              <span className="text-sm font-medium tabular-nums text-neutral-900 dark:text-neutral-100">{usd.format(r.value)}</span>
+              <span
+                className="w-full rounded-t-lg"
+                style={{ height: `calc((100% - 1.75rem) * ${r.value / max})`, minHeight: 4, backgroundColor: r.color, opacity: r.value ? 1 : 0.35 }}
+              />
+            </div>
+          ))}
+        </div>
+        <div className="flex justify-around gap-4">
+          {rows.map((r) => (
+            <span key={r.label} className="w-16 text-center text-sm text-neutral-500 dark:text-neutral-400">
+              {r.label}
+            </span>
+          ))}
+        </div>
+      </div>
     </ChartCard>
   )
 }
@@ -195,7 +194,7 @@ export function MoneyBars({
 /* -------------------------------------------- Weight: line with labels */
 
 const weightConfig = {
-  weight: { label: "Weight", color: "#5A9E9A" },
+  weight: { label: "Weight", color: "#22B3A6" },
 } satisfies ChartConfig
 
 export type WeightPoint = { date: string; weight: number }

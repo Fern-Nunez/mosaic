@@ -309,10 +309,10 @@ function EntryForm({ target, onDone }: { target: EntryEdit; onDone: () => void }
         onClick={remove}
         disabled={busy}
         className={cn(
-          "h-12 cursor-pointer rounded-xl text-base font-medium transition-colors disabled:opacity-50",
+          "h-12 cursor-pointer rounded-full border text-base font-medium transition-colors disabled:opacity-50",
           confirmDelete
-            ? "bg-red-600 text-white active:bg-red-700"
-            : "bg-neutral-100 text-red-600 active:bg-neutral-200 dark:bg-neutral-800 dark:text-red-400"
+            ? "border-transparent bg-red-600 text-white active:bg-red-700"
+            : "chip text-red-600 dark:text-red-400"
         )}
       >
         {confirmDelete ? "Tap again to delete" : "Delete"}

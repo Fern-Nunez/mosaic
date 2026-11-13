@@ -186,8 +186,8 @@ export default function Navbar() {
 
             <div className="navDesktopLinks">
                 <Link href="/"><div className="navDesktopLink">Home</div></Link>
-                <Link href="/dashboard"><div className="navDesktopLink">Dashboard</div></Link>
-                <Link href={"/dashboard"}>
+                <Link href="/app"><div className="navDesktopLink">Dashboard</div></Link>
+                <Link href={"/app"}>
                     <HPButton/>
                 </Link>
                 

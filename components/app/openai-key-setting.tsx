@@ -107,7 +107,7 @@ export function OpenAIKeySetting() {
             <button
               type="submit"
               disabled={busy}
-              className="h-11 flex-1 cursor-pointer rounded-xl bg-[#318E63] text-[15px] font-medium text-white disabled:opacity-50"
+              className="chip h-11 flex-1 cursor-pointer rounded-full text-[15px] font-medium text-neutral-900 transition-transform active:scale-[0.98] disabled:opacity-50 dark:text-neutral-100"
             >
               {busy ? "Saving…" : state?.hasKey ? "Replace key" : "Save key"}
             </button>

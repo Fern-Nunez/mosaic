@@ -10,7 +10,7 @@ import { formatMetric, INSIGHT_METRICS, type InsightChart } from "@/lib/app/insi
 import { cn } from "@/lib/utils"
 
 // First metric green, second terracotta: easy to tell apart, both on-brand.
-const COLORS = ["#318E63", "#C8735F"]
+const COLORS = ["#318E63", "#EE6C4D"]
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
 /**

@@ -4,7 +4,6 @@ import { redirect } from "next/navigation"
 import { PrefsProvider } from "@/components/app/prefs-context"
 import { TabBar } from "@/components/app/tab-bar"
 import { ThemeRoot } from "@/components/app/theme"
-import { THEME_COOKIE } from "@/lib/theme"
 import { HabitsProvider } from "@/components/dashboard/habits-context"
 import { WorkspaceProvider } from "@/components/dashboard/workspace-context"
 import { DEFAULT_WORKSPACES, type Workspace } from "@/lib/workspaces"
@@ -42,8 +41,6 @@ export default async function AppLayout({
       : DEFAULT_WORKSPACES
   const cookieStore = await cookies()
   const cookieWorkspace = cookieStore.get("mosaic-workspace")?.value
-  // Dark unless you've switched to light in More.
-  const theme = cookieStore.get(THEME_COOKIE)?.value === "light" ? "light" : "dark"
   const activeId = workspaces.some((ws) => ws.id === cookieWorkspace)
     ? cookieWorkspace!
     : workspaces[0].id
@@ -59,14 +56,23 @@ export default async function AppLayout({
       <HabitsProvider userId={user.id}>
         <PrefsProvider prefs={prefs} ready={prefsReady} userId={user.id}>
         <ThemeRoot
-          initialTheme={theme}
+          // Always dark; the light theme was removed.
+          initialTheme="dark"
           className="min-h-svh bg-[#F4F4F4] text-neutral-900 dark:bg-[#0B0B0C] dark:text-neutral-100"
           // Caladea is already loaded in the root layout; this makes it the
           // `font-serif` used for the big headings here.
           style={{ "--font-serif": "var(--font-caladea), Georgia, serif" } as React.CSSProperties}
         >
+          {/* Colored shapes wandering behind the glass cards (globals.css). */}
+          <div aria-hidden className="app-bg">
+            <span className="app-blob" />
+            <span className="app-blob" />
+            <span className="app-blob" />
+            <span className="app-blob" />
+            <span className="app-blob" />
+          </div>
           {/* Phone-width column; bottom padding keeps content clear of the tab bar. */}
-          <main className="mx-auto w-full max-w-[440px] px-6 pt-8 pb-44">
+          <main className="relative z-[1] mx-auto w-full max-w-[440px] px-6 pt-8 pb-44">
             {children}
           </main>
           <TabBar userId={user.id} />

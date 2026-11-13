@@ -47,12 +47,12 @@ export type TodayData = {
 
 // One color per category, used the same way everywhere.
 const COLORS = {
-  money: "#4E8A6B",
-  nutrition: "#C9A24A",
-  gym: "#6A7FB8",
-  sleep: "#8A7BB8",
-  weight: "#5A9E9A",
-  journal: "#C8735F",
+  money: "#2FA36B",
+  nutrition: "#F2B33D",
+  gym: "#4F7CF0",
+  sleep: "#8B6CF0",
+  weight: "#22B3A6",
+  journal: "#EE6C4D",
 } as const
 
 // Each card opens its full page under Trends.
@@ -96,7 +96,7 @@ function Card({
   className?: string
   children: React.ReactNode
 }) {
-  return <section className={cn("rounded-2xl bg-white dark:bg-neutral-900", className)}>{children}</section>
+  return <section className={cn("glass rounded-2xl", className)}>{children}</section>
 }
 
 function SectionTitle({ title, right }: { title: string; right?: string }) {
@@ -144,17 +144,18 @@ function HabitsCard({ today }: { today: string }) {
           {habits.map((habit) => {
             const isDone = done.has(habit.id)
             return (
-              <li key={habit.id} className="border-t border-neutral-100 dark:border-neutral-800 first:border-t-0">
+              // A faint inset line between habits, like the Entries list.
+              <li key={habit.id} className="mx-4 border-t border-black/[0.07] first:border-t-0 dark:border-white/[0.08]">
                 <button
                   type="button"
                   onClick={() => toggleToday(habit.id)}
                   aria-pressed={isDone}
-                  className="flex min-h-12 w-full cursor-pointer items-center gap-3 px-4 text-left active:bg-neutral-50 dark:active:bg-neutral-800"
+                  className="-mx-4 flex min-h-12 w-[calc(100%+2rem)] cursor-pointer items-center gap-3 px-4 text-left active:bg-neutral-50 dark:active:bg-neutral-800"
                 >
                   <span
                     className={cn(
                       "flex size-5 shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors",
-                      isDone ? "border-[#4E8A6B] bg-[#4E8A6B] text-white" : "border-neutral-400 dark:border-neutral-600"
+                      isDone ? "border-[#2FA36B] bg-[#2FA36B] text-white" : "border-neutral-400 dark:border-neutral-600"
                     )}
                   >
                     {isDone && <Check className="size-3" strokeWidth={3} />}
@@ -162,7 +163,7 @@ function HabitsCard({ today }: { today: string }) {
                   <span
                     className={cn(
                       "flex-1 text-[15px] transition-colors",
-                      isDone ? "text-[#3F7458] dark:text-[#7FBF9A]" : "text-neutral-900 dark:text-neutral-100"
+                      isDone ? "text-[#1F8A57] dark:text-[#5FD39A]" : "text-neutral-900 dark:text-neutral-100"
                     )}
                   >
                     {habit.name}
@@ -200,7 +201,7 @@ function StatCard({
   return (
     <Link
       href={href}
-      className="flex min-h-[124px] flex-col gap-2 rounded-2xl bg-white dark:bg-neutral-900 p-4 active:bg-neutral-50 dark:active:bg-neutral-800"
+      className="flex min-h-[124px] flex-col gap-2 glass rounded-2xl p-4 transition-transform active:scale-[0.985]"
     >
       <div className="flex items-center justify-between">
         <span className="text-sm text-neutral-500 dark:text-neutral-400">{label}</span>
@@ -433,10 +434,10 @@ export function TodayOverview({ data }: { data: TodayData }) {
         ) : (
           <ul className="pb-2">
             {entries.map((entry) => (
-              <li key={entry.key} className="border-t border-neutral-100 dark:border-neutral-800 first:border-t-0">
+              <li key={entry.key} className="mx-4 border-t border-black/[0.07] dark:border-white/[0.08] first:border-t-0">
                 <Link
                   href={entry.href}
-                  className="flex min-h-12 items-center gap-3 px-4 py-2 active:bg-neutral-50 dark:active:bg-neutral-800"
+                  className="-mx-4 flex min-h-12 items-center gap-3 px-4 py-2 active:bg-neutral-50 dark:active:bg-neutral-800"
                 >
                   <IconChip icon={entry.icon} color={entry.color} />
                   <span className="min-w-0 flex-1 truncate text-[15px] text-neutral-900 dark:text-neutral-100">

@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Check, Dumbbell, Footprints, type LucideIcon } from "lucide-react"
 
+import { AccountsPanel } from "@/components/app/trends/accounts-panel"
 import { CATEGORY_META } from "@/components/app/trends/meta"
 import { RangePicker } from "@/components/app/trends/range-picker"
 import {
@@ -117,6 +118,18 @@ type DetailProps = { data: TrendData; w: Window; rangeLabel: string }
 
 const inWindow = (w: Window) => (r: { date: string }) => inRange(r.date, w.start, w.today)
 const per = (w: Window) => ({ d: "today", m: "per day", q: "per week", y: "per month" })[w.range.id]
+/** Day-by-day charts on the month view show just the last 7 days, so each day is readable. */
+const lastWeek = (w: Window) => w.range.id === "m"
+const chartWindow = (w: Window): Window =>
+  lastWeek(w)
+    ? {
+        ...w,
+        buckets: Array.from({ length: 7 }, (_, i) => {
+          const key = shiftKey(w.today, i - 6)
+          return { start: key, end: key, label: keyToDate(key).toLocaleDateString("en-US", { month: "short", day: "numeric" }) }
+        }),
+      }
+    : w
 /** Calendars shown for the day squares: this month for D/M, else the whole period. */
 const calendarMonths = (w: Window) =>
   monthsBetween(w.range.id === "d" ? periodStart(w.today, "m") : w.start, w.today)
@@ -156,9 +169,10 @@ function MoneyDetail({ data, w, rangeLabel }: DetailProps) {
       {data.prefs.moneyBudget ? <BudgetPanel monthly={data.prefs.moneyBudget} spent={spent} w={w} /> : null}
       {categories.length > 0 && (
         <Panel title="Where it went" subtitle="Spending by category">
-          <BreakdownBars rows={categories} color="#C8735F" format={(v) => usd.format(v)} />
+          <BreakdownBars rows={categories} color="#EE6C4D" format={(v) => usd.format(v)} />
         </Panel>
       )}
+      <AccountsPanel accounts={data.accounts} subscriptions={data.subscriptions} today={w.today} />
       <TransactionList rows={rows} />
     </>
   )
@@ -182,7 +196,7 @@ function TransactionList({ rows }: { rows: TrendData["transactions"] }) {
                 t.transaction_type === "income" ? categoryColor("Income") : t.transaction_type === "reimbursement" ? categoryColor("Paid back") : categoryColor(t.category)
               const Icon = transactionIcon(t)
               return (
-                <li key={t.id} className="border-t border-neutral-100 first:border-t-0 dark:border-neutral-800">
+                <li key={t.id} className="border-t border-black/[0.07] dark:border-white/[0.08] first:border-t-0">
                   <button
                     type="button"
                     onClick={() => setEditing(t)}
@@ -212,7 +226,7 @@ function TransactionList({ rows }: { rows: TrendData["transactions"] }) {
                   <span
                     className={cn(
                       "shrink-0 text-[15px] font-medium tabular-nums",
-                      isMoneyIn(t) ? "text-[#3F7458] dark:text-[#7FBF9A]" : "text-neutral-900 dark:text-neutral-100"
+                      isMoneyIn(t) ? "text-[#1F8A57] dark:text-[#5FD39A]" : "text-neutral-900 dark:text-neutral-100"
                     )}
                   >
                     {isMoneyIn(t) ? "+" : "−"}
@@ -233,19 +247,17 @@ function TransactionList({ rows }: { rows: TrendData["transactions"] }) {
 
 type MacroKey = "calories" | "protein" | "carbs" | "fat" | "fiber"
 
-function NutritionDetail({ data, w, rangeLabel }: DetailProps) {
-  const [macro, setMacro] = React.useState<MacroKey>("calories")
+function NutritionDetail({ data, w }: DetailProps) {
   const rows = data.nutrition.filter(inWindow(w))
   const days = distinctDays(rows)
 
   const MACROS: { key: MacroKey; label: string; unit: string; color: string; goal: number }[] = [
-    { key: "calories", label: "Calories", unit: "", color: "#C9A24A", goal: data.goals.calories },
-    { key: "protein", label: "Protein", unit: "g", color: "#C8735F", goal: data.goals.protein },
-    { key: "carbs", label: "Carbs", unit: "g", color: "#6A9AB8", goal: data.goals.carbs },
-    { key: "fat", label: "Fat", unit: "g", color: "#9C7BB0", goal: data.goals.fat },
-    { key: "fiber", label: "Fiber", unit: "g", color: "#6F9A5B", goal: data.goals.fiber },
+    { key: "calories", label: "Calories", unit: "", color: "#F2B33D", goal: data.goals.calories },
+    { key: "protein", label: "Protein", unit: "g", color: "#EE6C4D", goal: data.goals.protein },
+    { key: "carbs", label: "Carbs", unit: "g", color: "#3FA2E8", goal: data.goals.carbs },
+    { key: "fat", label: "Fat", unit: "g", color: "#B068E0", goal: data.goals.fat },
+    { key: "fiber", label: "Fiber", unit: "g", color: "#5DB548", goal: data.goals.fiber },
   ]
-  const selected = MACROS.find((m) => m.key === macro)!
   /** Average per day that has any meal logged; NaN when nothing was logged. */
   const avgPerDay = (r: TrendData["nutrition"], key: MacroKey) => {
     const d = distinctDays(r)
@@ -264,36 +276,9 @@ function NutritionDetail({ data, w, rangeLabel }: DetailProps) {
       <Panel title="Daily average" subtitle={`${days} of ${w.days} days logged · vs. your goals`}>
         <GoalRings rows={MACROS.map((m) => ({ ...m, value: avgPerDay(rows, m.key) }))} />
       </Panel>
-      <Panel title={selected.label} subtitle={`${rangeLabel}, average per logged day`}>
-        <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 [scrollbar-width:none]">
-          {MACROS.map((m) => (
-            <button
-              key={m.key}
-              type="button"
-              onClick={() => setMacro(m.key)}
-              aria-pressed={macro === m.key}
-              className={cn(
-                "h-8 shrink-0 cursor-pointer rounded-full px-3 text-sm transition-colors",
-                macro === m.key ? "text-white" : "bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
-              )}
-              style={macro === m.key ? { backgroundColor: m.color } : undefined}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-        <ColumnChart
-          key={macro}
-          buckets={w.buckets}
-          goal={selected.goal}
-          goalLabel="Goal"
-          format={(v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : `${Math.round(v)}${selected.unit}`)}
-          series={[{ key: macro, label: selected.label, color: selected.color, values: perBucket(w, data.nutrition, (r) => avgPerDay(r, macro)) }]}
-        />
-      </Panel>
       {topFoods.length > 0 && (
         <Panel title="Most logged" subtitle="Times eaten in this range">
-          <BreakdownBars rows={topFoods} color="#C9A24A" format={(v) => `${v}×`} />
+          <BreakdownBars rows={topFoods} color="#F2B33D" format={(v) => `${v}×`} />
         </Panel>
       )}
       <EntryList
@@ -390,12 +375,12 @@ function WorkoutDetail({ data, w }: DetailProps) {
         ]}
       />
       {plan && <WeekPlan data={data} plan={plan} today={w.today} weekStart={weekStart} />}
-      <Panel title="Workout days" subtitle="Green means you trained that day">
-        <DayGrid months={calendarMonths(w)} active={days} color="#5E9C78" start={w.start} end={w.today} />
+      <Panel title="Workout days" subtitle="Blue means you trained that day">
+        <DayGrid months={calendarMonths(w)} active={days} color="#4F7CF0" start={w.start} end={w.today} />
       </Panel>
       {top.length > 0 && (
         <Panel title="Most trained" subtitle="Sessions per exercise">
-          <BreakdownBars rows={top} color="#6A7FB8" format={(v) => `${v}×`} />
+          <BreakdownBars rows={top} color="#4F7CF0" format={(v) => `${v}×`} />
         </Panel>
       )}
       <EntryList
@@ -492,9 +477,9 @@ function WeekPlan({
             <div
               className={cn(
                 "flex aspect-[3/4] w-full flex-col items-center justify-center gap-1 rounded-xl ring-1 ring-inset",
-                d.state === "done" && "bg-[#5E9C78] text-white ring-transparent",
-                d.state === "missed" && "bg-[#C8735F]/12 text-[#B0614E] ring-[#C8735F]/40 dark:text-[#E09A88]",
-                d.state === "today" && "bg-white text-neutral-900 ring-2 ring-[#318E63] dark:bg-neutral-900 dark:text-neutral-100",
+                d.state === "done" && "bg-[#4F7CF0] text-white ring-transparent",
+                d.state === "missed" && "bg-[#EE6C4D]/12 text-[#D8452F] ring-[#EE6C4D]/40 dark:text-[#FF9A85]",
+                d.state === "today" && "bg-white text-neutral-900 ring-2 ring-[#4F7CF0] dark:bg-neutral-900 dark:text-neutral-100",
                 d.state === "upcoming" && "bg-neutral-100 text-neutral-500 ring-black/10 dark:bg-neutral-800 dark:text-neutral-400 dark:ring-white/10",
                 d.state === "rest" && "bg-transparent text-neutral-300 ring-black/10 dark:text-neutral-600 dark:ring-white/10"
               )}
@@ -527,14 +512,23 @@ function WeightDetail({ data, w, rangeLabel }: DetailProps) {
   // With only one weigh-in in range, start the line from the one before it.
   const baseline = data.weights.filter((x) => x.date < w.start).pop()
   const linePoints = rows.length >= 2 || !baseline ? rows : [baseline, ...rows]
+  // Month view: the chart shows the last 7 days (plus the weigh-in before, if
+  // that leaves fewer than two points to draw a line between).
+  const weekStart = shiftKey(w.today, -6)
+  const weekRows = data.weights.filter((x) => x.date >= weekStart && x.date <= w.today)
+  const weekBase = data.weights.filter((x) => x.date < weekStart).pop()
+  const chartPoints = !lastWeek(w) ? linePoints : weekRows.length >= 2 || !weekBase ? weekRows : [weekBase, ...weekRows]
+  const chartSub = lastWeek(w)
+    ? chartPoints.length > weekRows.length ? "Last 7 days, from your weigh-in before" : "Last 7 days"
+    : linePoints.length > rows.length ? `${rangeLabel}, from your last weigh-in before it` : rangeLabel
 
   return (
     <>
-      <Panel title="Weight" subtitle={linePoints.length > rows.length ? `${rangeLabel}, from your last weigh-in before it` : rangeLabel}>
-        {linePoints.length >= 2 ? (
+      <Panel title="Weight" subtitle={chartSub}>
+        {chartPoints.length >= 2 ? (
           <PointLine
-            points={linePoints.map((r) => ({ date: r.date, value: r.weight }))}
-            color="#5A9E9A"
+            points={chartPoints.map((r) => ({ date: r.date, value: r.weight }))}
+            color="#22B3A6"
             goal={data.prefs.weightGoal ?? undefined}
           />
         ) : (
@@ -586,6 +580,7 @@ function WeightDetail({ data, w, rangeLabel }: DetailProps) {
 /* ----------------------------------------------------------------- Sleep */
 
 function SleepDetail({ data, w, rangeLabel }: DetailProps) {
+  const cw = chartWindow(w)
   const rows = data.sleep.filter(inWindow(w))
   const withHours = rows.filter((s) => s.hours != null)
   const best = withHours.reduce<(typeof rows)[number] | null>((b, s) => (!b || (s.hours ?? 0) > (b.hours ?? 0) ? s : b), null)
@@ -601,11 +596,11 @@ function SleepDetail({ data, w, rangeLabel }: DetailProps) {
 
   return (
     <>
-      <Panel title="Hours slept" subtitle={w.range.id === "d" || w.range.id === "m" ? `${rangeLabel}, each night` : `${rangeLabel}, average ${per(w)}`}>
+      <Panel title="Hours slept" subtitle={lastWeek(w) ? "Last 7 days, each night" : w.range.id === "d" ? `${rangeLabel}, each night` : `${rangeLabel}, average ${per(w)}`}>
         <BucketLine
-          buckets={w.buckets}
-          values={perBucket(w, data.sleep, (r) => avgOf(r, "hours"))}
-          color="#8A7BB8"
+          buckets={cw.buckets}
+          values={perBucket(cw, data.sleep, (r) => avgOf(r, "hours"))}
+          color="#8B6CF0"
           goal={goal}
           goalLabel={`${goal}h`}
           format={(v) => `${v}h`}
@@ -620,8 +615,8 @@ function SleepDetail({ data, w, rangeLabel }: DetailProps) {
         ]}
       />
       {hasScores && (
-        <Panel title="Sleep score" subtitle={w.range.id === "d" || w.range.id === "m" ? `${rangeLabel}, each night` : `${rangeLabel}, average ${per(w)}`}>
-          <BucketLine buckets={w.buckets} values={perBucket(w, data.sleep, (r) => avgOf(r, "score"))} color="#B3A6D6" />
+        <Panel title="Sleep score" subtitle={lastWeek(w) ? "Last 7 days, each night" : w.range.id === "d" ? `${rangeLabel}, each night` : `${rangeLabel}, average ${per(w)}`}>
+          <BucketLine buckets={cw.buckets} values={perBucket(cw, data.sleep, (r) => avgOf(r, "score"))} color="#B9A5FF" />
         </Panel>
       )}
       <EntryList
@@ -641,6 +636,7 @@ function SleepDetail({ data, w, rangeLabel }: DetailProps) {
 /* --------------------------------------------------------------- Journal */
 
 function JournalDetail({ data, w, rangeLabel }: DetailProps) {
+  const cw = chartWindow(w)
   const rows = data.journal.filter(inWindow(w))
   const moods = rows.map((j) => j.mood).filter((m): m is string => !!m && m !== "unknown")
   const counts = new Map<string, number>()
@@ -668,13 +664,13 @@ function JournalDetail({ data, w, rangeLabel }: DetailProps) {
         ]}
       />
       {w.range.id !== "d" && (
-        <Panel title="Entries" subtitle={`${rangeLabel}, ${per(w)}`}>
-          <ColumnChart buckets={w.buckets} series={[{ key: "entries", label: "Entries", color: "#C8735F", values: perBucket(w, data.journal, (r) => r.length) }]} />
+        <Panel title="Entries" subtitle={lastWeek(w) ? "Last 7 days" : `${rangeLabel}, ${per(w)}`}>
+          <ColumnChart buckets={cw.buckets} series={[{ key: "entries", label: "Entries", color: "#EE6C4D", values: perBucket(cw, data.journal, (r) => r.length) }]} />
         </Panel>
       )}
       {moodRows.length > 0 && (
         <Panel title="Moods" subtitle="How your entries felt">
-          <BreakdownBars rows={moodRows} color="#C8735F" format={(v) => `${v}×`} />
+          <BreakdownBars rows={moodRows} color="#EE6C4D" format={(v) => `${v}×`} />
         </Panel>
       )}
       <EntryList
@@ -695,6 +691,7 @@ function JournalDetail({ data, w, rangeLabel }: DetailProps) {
 /* ---------------------------------------------------------------- Habits */
 
 function HabitsDetail({ input, w, rangeLabel }: { input: HabitsInput; w: Window; rangeLabel: string }) {
+  const cw = chartWindow(w)
   const { habits, completions } = input
   if (!habits.length) {
     return (
@@ -732,11 +729,11 @@ function HabitsDetail({ input, w, rangeLabel }: { input: HabitsInput; w: Window;
           { label: "Best streak", value: `${bestStreak.streak} day${bestStreak.streak === 1 ? "" : "s"}`, hint: bestStreak.streak ? bestStreak.habit.name : undefined },
         ]}
       />
-      <Panel title="Completion" subtitle={`${rangeLabel}, ${per(w)}`}>
+      <Panel title="Completion" subtitle={lastWeek(w) ? "Last 7 days" : `${rangeLabel}, ${per(w)}`}>
         <ColumnChart
-          buckets={w.buckets}
+          buckets={cw.buckets}
           format={(v) => `${Math.round(v)}%`}
-          series={[{ key: "rate", label: "Done", color: "#318E63", values: w.buckets.map((b) => habitRate(input, b.start, b.end)) }]}
+          series={[{ key: "rate", label: "Done", color: "#318E63", values: cw.buckets.map((b) => habitRate(input, b.start, b.end)) }]}
         />
       </Panel>
       <Panel title="By habit" subtitle="% of days done in this range">
@@ -790,8 +787,8 @@ function SupplementsDetail({ data, w }: DetailProps) {
               let due = 0
               for (let d = w.start; d <= w.today; d = shiftKey(d, 1)) if (isDue(d)) due++
               return (
-                <li key={s.id} className="flex min-h-14 items-center gap-3 border-t border-neutral-100 px-5 py-2 first:border-t-0 dark:border-neutral-800">
-                  <span aria-hidden className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#C27A981F] text-base">💊</span>
+                <li key={s.id} className="mx-5 flex min-h-14 items-center gap-3 border-t border-black/[0.07] dark:border-white/[0.08] py-2 first:border-t-0">
+                  <span aria-hidden className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#E2609A1F] text-base">💊</span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[15px] font-medium text-neutral-900 dark:text-neutral-100">{s.name}</p>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">
@@ -824,8 +821,8 @@ function SupplementsDetail({ data, w }: DetailProps) {
                 onClick={() => setFilter(n)}
                 aria-pressed={filter === n}
                 className={cn(
-                  "h-8 shrink-0 cursor-pointer rounded-full px-3 text-sm whitespace-nowrap transition-colors",
-                  filter === n ? "bg-[#C27A98] text-white" : "bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
+                  "h-8 shrink-0 cursor-pointer rounded-full border px-3 text-sm whitespace-nowrap transition-colors",
+                  filter === n ? "gloss" : "chip text-neutral-700 dark:text-neutral-300"
                 )}
               >
                 {n ?? "All"}
@@ -833,11 +830,11 @@ function SupplementsDetail({ data, w }: DetailProps) {
             ))}
           </div>
         )}
-        <DayGrid months={calendarMonths(w)} active={takenDays} color="#C27A98" start={w.start} end={w.today} />
+        <DayGrid months={calendarMonths(w)} active={takenDays} color="#E2609A" start={w.start} end={w.today} />
       </Panel>
       {byName.length > 0 && (
         <Panel title="By supplement" subtitle="Doses in this range">
-          <BreakdownBars rows={byName} color="#C27A98" format={(v) => `${v}×`} />
+          <BreakdownBars rows={byName} color="#E2609A" format={(v) => `${v}×`} />
         </Panel>
       )}
       <EntryList
@@ -863,20 +860,27 @@ function BudgetPanel({ monthly, spent, w }: { monthly: number; spent: number; w:
   const over = spent > budget
   return (
     <Panel title="Budget" subtitle={{ d: "Today's share", m: "This month", q: "This quarter (3 months)", y: "This year (12 months)" }[w.range.id]}>
-      <div className="flex items-baseline justify-between text-sm">
-        <span className="text-neutral-500 dark:text-neutral-400">
-          <span className="text-lg font-medium text-neutral-900 dark:text-neutral-100">{usd.format(spent)}</span> of {usd.format(budget)}
-        </span>
-        <span className={cn("font-medium", over ? "text-[#C0675E]" : "text-[#4E8A6B]")}>
-          {over ? `${usd.format(spent - budget)} over` : `${usd.format(budget - spent)} left`}
-        </span>
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <p className="text-3xl font-semibold tracking-tight tabular-nums text-neutral-900 dark:text-neutral-100">{usd.format(spent)}</p>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">spent of {usd.format(budget)}</p>
+        </div>
+        <div className="text-right">
+          <p className={cn("text-xl font-semibold tabular-nums", over ? "text-[#E5534B]" : "text-[#2FA36B]")}>
+            {usd.format(Math.abs(budget - spent))}
+          </p>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">{over ? "over" : "left"}</p>
+        </div>
       </div>
-      <span className="h-2.5 overflow-hidden rounded-full bg-neutral-100 dark:bg-neutral-800">
-        <span
-          className="block h-full rounded-full"
-          style={{ width: `${Math.min(pct, 1) * 100}%`, backgroundColor: over ? "#C0675E" : pct > 0.85 ? "#C9A24A" : "#4E8A6B" }}
-        />
-      </span>
+      <div className="flex flex-col gap-1.5">
+        <span className="h-3.5 overflow-hidden rounded-full bg-black/[0.07] dark:bg-white/10">
+          <span
+            className="bar-fill block h-full rounded-full"
+            style={{ width: `${Math.min(pct, 1) * 100}%`, background: over ? "#E5534B" : pct > 0.85 ? "#F2B33D" : undefined }}
+          />
+        </span>
+        <span className="text-right text-xs tabular-nums text-neutral-500 dark:text-neutral-400">{Math.round(pct * 100)}% used</span>
+      </div>
     </Panel>
   )
 }

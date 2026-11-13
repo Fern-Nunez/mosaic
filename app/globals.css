@@ -187,3 +187,122 @@
   transform-origin: right center;
   animation: page-turn-back 0.4s ease-out;
 }
+/* ---------------------------------------------------------------- /app look
+   Background: five soft colored blobs wandering on their own paths. Each
+   has a different loop length (prime seconds), so they never sync up and
+   the drift reads as random; where they cross, the gradients just mix.
+   Plain radial gradients moved with transform only, so the GPU slides
+   layers around and nothing is re-blurred per frame. */
+.app-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: #eceef1;
+}
+.dark .app-bg {
+  background: #07080a;
+}
+.app-blob {
+  position: absolute;
+  width: 75vmax;
+  height: 75vmax;
+  margin: -37.5vmax 0 0 -37.5vmax;
+  border-radius: 9999px;
+  will-change: transform;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  --c: 0 0 0;
+  background: radial-gradient(closest-side, rgb(var(--c) / var(--a)), rgb(var(--c) / 0));
+}
+.app-blob:nth-child(1) { top: 10%; left: 15%; --c: 52 178 123; animation-name: wander-a; animation-duration: 41s; }
+.app-blob:nth-child(2) { top: 85%; left: 90%; --c: 112 98 214; animation-name: wander-b; animation-duration: 53s; animation-delay: -20s; }
+.app-blob:nth-child(3) { top: 55%; left: 0%; --c: 56 140 220; animation-name: wander-c; animation-duration: 61s; animation-delay: -35s; }
+.app-blob:nth-child(4) { top: 30%; left: 95%; --c: 226 150 92; animation-name: wander-d; animation-duration: 67s; animation-delay: -12s; }
+.app-blob:nth-child(5) { top: 100%; left: 30%; --c: 214 92 140; animation-name: wander-e; animation-duration: 73s; animation-delay: -48s; }
+/* Light mode: same colors, a touch stronger so they read on pale gray. */
+.app-blob { --a: 0.26; }
+.dark .app-blob { --a: 0.2; }
+
+@keyframes wander-a {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  25% { transform: translate3d(40vw, 20vh, 0) scale(1.2); }
+  50% { transform: translate3d(15vw, 55vh, 0) scale(0.85); }
+  75% { transform: translate3d(55vw, 70vh, 0) scale(1.1); }
+  100% { transform: translate3d(65vw, 15vh, 0) scale(0.95); }
+}
+@keyframes wander-b {
+  0% { transform: translate3d(0, 0, 0) scale(1.1); }
+  30% { transform: translate3d(-50vw, -30vh, 0) scale(0.9); }
+  55% { transform: translate3d(-20vw, -65vh, 0) scale(1.25); }
+  80% { transform: translate3d(-70vw, -50vh, 0) scale(1); }
+  100% { transform: translate3d(-35vw, -10vh, 0) scale(0.85); }
+}
+@keyframes wander-c {
+  0% { transform: translate3d(0, 0, 0) scale(0.9); }
+  20% { transform: translate3d(35vw, -25vh, 0) scale(1.15); }
+  45% { transform: translate3d(70vw, 10vh, 0) scale(1); }
+  70% { transform: translate3d(30vw, 30vh, 0) scale(1.3); }
+  100% { transform: translate3d(80vw, -45vh, 0) scale(0.9); }
+}
+@keyframes wander-d {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  25% { transform: translate3d(-35vw, 35vh, 0) scale(0.85); }
+  50% { transform: translate3d(-75vw, 5vh, 0) scale(1.2); }
+  75% { transform: translate3d(-45vw, 55vh, 0) scale(1); }
+  100% { transform: translate3d(-15vw, 25vh, 0) scale(1.15); }
+}
+@keyframes wander-e {
+  0% { transform: translate3d(0, 0, 0) scale(1.2); }
+  35% { transform: translate3d(45vw, -45vh, 0) scale(0.9); }
+  60% { transform: translate3d(10vw, -80vh, 0) scale(1.1); }
+  85% { transform: translate3d(55vw, -60vh, 0) scale(0.95); }
+  100% { transform: translate3d(25vw, -30vh, 0) scale(1.2); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-blob {
+    animation: none;
+  }
+}
+
+/* Frosted card: see-through fill and a soft shadow, no border. No
+   backdrop-filter; the background is already soft, so blur buys nothing. */
+@utility glass {
+  background: linear-gradient(160deg, rgb(255 255 255 / 0.78), rgb(255 255 255 / 0.5));
+  box-shadow: 0 10px 28px -16px rgb(15 20 30 / 0.25);
+  &:is(.dark *) {
+    background: linear-gradient(160deg, rgb(255 255 255 / 0.085), rgb(255 255 255 / 0.03));
+    box-shadow: 0 12px 32px -16px rgb(0 0 0 / 0.7);
+  }
+}
+
+/* Glossy graphite pill: the main button and selected chips. */
+@utility gloss {
+  color: #fff;
+  background: radial-gradient(130% 150% at 50% -30%, #6a6d74 0%, #2b2d31 48%, #141517 100%);
+  border: 1px solid rgb(0 0 0 / 0.55);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.3),
+    inset 0 -3px 8px rgb(0 0 0 / 0.45),
+    0 6px 16px -8px rgb(0 0 0 / 0.55);
+  &:is(.dark *) {
+    border-color: rgb(255 255 255 / 0.14);
+  }
+}
+
+/* Unselected chip: a faint see-through pill. */
+@utility chip {
+  background: rgb(0 0 0 / 0.05);
+  border: 1px solid rgb(0 0 0 / 0.04);
+  &:is(.dark *) {
+    background: rgb(255 255 255 / 0.06);
+    border-color: rgb(255 255 255 / 0.06);
+  }
+}
+
+/* Progress fill: solid money green. */
+@utility bar-fill {
+  background: #2fa36b;
+}

@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation"
 import { Settings2, X } from "lucide-react"
 
 import {
-  Choice,
   ErrorText,
   Field,
   FieldGroup,
   NumberInput,
   SaveButton,
+  Segmented,
   toNumber,
 } from "@/components/app/log/fields"
 import { CATEGORY_META } from "@/components/app/trends/meta"
@@ -204,7 +204,7 @@ function NutritionSettings({ data, userId, done }: FormProps) {
         <Field label="Fiber" hint="g"><NumberInput value={goals.fiber} onChange={set("fiber")} inputMode="numeric" /></Field>
       </div>
       <FieldGroup label="Photo calorie estimates">
-        <Choice
+        <Segmented<string>
           options={[
             { value: "low", label: "Lower" },
             { value: "middle", label: "Middle" },
@@ -432,7 +432,7 @@ function HabitsSettings({ done }: FormProps) {
         </ul>
       )}
       <ErrorText>{error}</ErrorText>
-      <button type="button" onClick={done} className="h-12 cursor-pointer rounded-xl bg-neutral-100 text-base dark:bg-neutral-800">
+      <button type="button" onClick={done} className="chip h-12 cursor-pointer rounded-full text-base text-neutral-900 transition-transform active:scale-[0.98] dark:text-neutral-100">
         Done
       </button>
     </div>
@@ -512,7 +512,7 @@ function SupplementsSettings({ data, userId, done }: FormProps) {
                       aria-label={`${s.name} on ${WEEKDAY_SHORT[d]}`}
                       className={cn(
                         "flex size-9 cursor-pointer items-center justify-center rounded-full text-sm font-medium",
-                        on.includes(d) ? "bg-[#C27A98] text-white" : "bg-white text-neutral-600 dark:bg-neutral-900 dark:text-neutral-400"
+                        on.includes(d) ? "bg-[#E2609A] text-white" : "bg-white text-neutral-600 dark:bg-neutral-900 dark:text-neutral-400"
                       )}
                     >
                       {l}
@@ -529,7 +529,7 @@ function SupplementsSettings({ data, userId, done }: FormProps) {
         logged by accident. Stopping keeps your history.
       </p>
       <ErrorText>{error}</ErrorText>
-      <button type="button" onClick={done} className="h-12 cursor-pointer rounded-xl bg-neutral-100 text-base dark:bg-neutral-800">
+      <button type="button" onClick={done} className="chip h-12 cursor-pointer rounded-full text-base text-neutral-900 transition-transform active:scale-[0.98] dark:text-neutral-100">
         Done
       </button>
     </div>

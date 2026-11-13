@@ -193,10 +193,10 @@ export function MoneyForm({ ctx, existing }: FormProps & { existing?: EditableTr
           onClick={remove}
           disabled={busy}
           className={cn(
-            "h-12 cursor-pointer rounded-xl text-base font-medium transition-colors disabled:opacity-50",
+            "h-12 cursor-pointer rounded-full border text-base font-medium transition-colors disabled:opacity-50",
             confirmDelete
-              ? "bg-red-600 text-white active:bg-red-700"
-              : "bg-neutral-100 text-red-600 active:bg-neutral-200 dark:bg-neutral-800 dark:text-red-400"
+              ? "border-transparent bg-red-600 text-white active:bg-red-700"
+              : "chip text-red-600 dark:text-red-400"
           )}
         >
           {confirmDelete ? "Tap again to delete" : "Delete transaction"}
@@ -1177,7 +1177,7 @@ export function TaskForm({ ctx }: FormProps) {
           </ul>
         </div>
       )}
-      <button type="button" onClick={ctx.done} className="h-12 cursor-pointer rounded-xl bg-neutral-100 text-base text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100">
+      <button type="button" onClick={ctx.done} className="chip h-12 cursor-pointer rounded-full text-base text-neutral-900 transition-transform active:scale-[0.98] dark:text-neutral-100">
         Done
       </button>
     </div>

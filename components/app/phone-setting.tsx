@@ -102,7 +102,7 @@ export function PhoneSetting({ userId }: { userId: string }) {
             disabled={status === "saving"}
             className={cn(
               "flex h-8 shrink-0 cursor-pointer items-center gap-1 rounded-full px-3 text-sm font-medium text-white",
-              status === "saved" ? "bg-[#4E8A6B]" : "bg-[#318E63]"
+              status === "saved" ? "bg-[#2FA36B]" : "bg-[#318E63]"
             )}
           >
             {status === "saved" ? <Check className="size-4" /> : status === "saving" ? "…" : "Save"}

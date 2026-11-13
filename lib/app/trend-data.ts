@@ -52,6 +52,10 @@ export type TrendData = {
   prefs: AppPrefs
   /** False until the app_prefs migration has been run. */
   prefsReady: boolean
+  /** Cards and bank accounts. Only loaded for the Money page. */
+  accounts: { id: string; name: string; account_type: string; institution: string | null; last_four: string | null; credit_limit: number | null; credit_used: number; payment_due_date: string | null }[]
+  /** Active subscriptions. Only loaded for the Money page. */
+  subscriptions: { id: string; name: string; amount: number; billing_cycle: string; category: string | null; account_id: string | null; due_date: string | null }[]
 }
 
 /**
@@ -88,7 +92,7 @@ export async function loadTrendData(
 
   const empty = Promise.resolve({ data: [], error: null })
 
-  const [transactions, nutrition, gym, runs, cardio, sleep, journal, weights, before, supplements, stack, settings, lastWeights] =
+  const [transactions, nutrition, gym, runs, cardio, sleep, journal, weights, before, supplements, stack, settings, lastWeights, accounts, subscriptions] =
     await Promise.all([
       want("money") ? scoped("transactions", "id, date, amount, transaction_type, category, description, payment_method", moneySince) : empty,
       want("nutrition") ? scoped("nutrition", "id, date, meal_type, food_name, calories, protein, carbs, fat, fiber") : empty,
@@ -136,6 +140,23 @@ export async function loadTrendData(
             .not("weight", "is", null)
             .order("date", { ascending: false })
             .limit(5)
+        : empty,
+      only === "money"
+        ? supabase
+            .from("accounts")
+            .select("id, name, account_type, institution, last_four, credit_limit, credit_used, payment_due_date")
+            .eq("user_id", userId)
+            .eq("workspace", workspace)
+            .order("created_at", { ascending: true })
+        : empty,
+      only === "money"
+        ? supabase
+            .from("subscriptions")
+            .select("id, name, amount, billing_cycle, category, account_id, due_date")
+            .eq("user_id", userId)
+            .eq("workspace", workspace)
+            .eq("is_active", true)
+            .order("due_date", { ascending: true, nullsFirst: false })
         : empty,
     ])
 
@@ -187,5 +208,11 @@ export async function loadTrendData(
     estimateLevel: goals.estimate_level ?? "low",
     prefs: readPrefs(goals.app_prefs),
     prefsReady: settings.data ? "app_prefs" in settings.data : true,
+    accounts: rows<TrendData["accounts"][number]>(accounts).map((a) => ({
+      ...a,
+      credit_limit: num(a.credit_limit),
+      credit_used: Number(a.credit_used) || 0,
+    })),
+    subscriptions: rows<TrendData["subscriptions"][number]>(subscriptions).map((s) => ({ ...s, amount: Number(s.amount) })),
   }
 }

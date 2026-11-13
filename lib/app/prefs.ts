@@ -43,7 +43,21 @@ export type AppPrefs = {
    * Missing or all 7 = every day.
    */
   supplementDays?: Record<string, number[]>
+  /** Day of the month (1–31) to get a "pay your bills" reminder. Null = off. */
+  billPayDay?: number | null
+  /** Local time ("HH:MM", 24-hour, 15-minute steps) for a daily journal nudge. Null = off. */
+  journalReminderTime?: string | null
+  /** Evening workout nudge. Missing = on; false = off. */
+  workoutReminder?: boolean
+  /** Local time ("HH:MM") for the workout nudge. Missing = DEFAULT_WORKOUT_REMINDER_TIME. */
+  workoutReminderTime?: string | null
+  /** Local time ("HH:MM") for a supplements nudge. Null = off. */
+  supplementReminderTime?: string | null
+  /** Local time ("HH:MM") for a weigh-in nudge. Null = off. */
+  weightReminderTime?: string | null
 }
+
+export const DEFAULT_WORKOUT_REMINDER_TIME = "18:00"
 
 export const DEFAULT_SLEEP_GOAL = 7
 

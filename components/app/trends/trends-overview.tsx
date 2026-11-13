@@ -25,7 +25,7 @@ const MINI: Partial<Record<TrendCategory, (p: MiniProps) => React.ReactNode>> = 
   money: ({ data, today }) => <MoneyPace data={data} today={today} prefs={data.prefs} />,
   weight: ({ data, color }) => <WeightMini weights={data.recentWeights} goal={data.prefs.weightGoal ?? null} color={color} />,
   workout: ({ data, today, color }) => <WorkoutStrip data={data} today={today} color={color} />,
-  journal: ({ data, today }) => <MoodDots data={data} today={today} />,
+  journal: ({ data, today, color }) => <MoodDots data={data} today={today} color={color} />,
   habits: ({ habits, completions, today, color }) => <HabitBars habits={habits} completions={completions} today={today} color={color} />,
   supplements: ({ data, today, color }) => <SupplementStrip data={data} today={today} color={color} />,
 }
@@ -49,7 +49,7 @@ export function TrendsOverview({ data, range }: { data: TrendData; range: Range 
             <Link
               key={category}
               href={`/app/trends/${category}?range=${range.id}`}
-              className="flex flex-col gap-3 rounded-2xl bg-white p-4 active:bg-neutral-50 dark:bg-neutral-900 dark:active:bg-neutral-800"
+              className="flex flex-col gap-3 glass rounded-2xl p-4 transition-transform active:scale-[0.985]"
             >
               <div className="flex items-center gap-3">
                 <span

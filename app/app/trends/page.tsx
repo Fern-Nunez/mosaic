@@ -22,7 +22,7 @@ export default async function TrendsPage({
   const data = await loadTrendData(supabase, user.id, workspace, range.id)
 
   return (
-    <div className="flex flex-col gap-12">
+    <div className="flex flex-col gap-7">
       <h1 className={`pt-4 ${PAGE_TITLE}`}>
         How things are trending.
       </h1>

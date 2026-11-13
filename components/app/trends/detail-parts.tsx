@@ -18,7 +18,7 @@ import {
   YAxis,
 } from "recharts"
 
-import { EdgeXTick, InsideYTick, StartTick } from "@/components/app/chart-ticks"
+import { AngledXTick, EdgeXTick, LeftYTick } from "@/components/app/chart-ticks"
 import { EntryEditor, type EntryEdit } from "@/components/app/trends/entry-editor"
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart"
 import type { Bucket, Month } from "@/lib/app/dates"
@@ -37,7 +37,7 @@ export function Panel({
   children: React.ReactNode
 }) {
   return (
-    <section className="flex flex-col gap-4 rounded-2xl bg-white p-5 dark:bg-neutral-900">
+    <section className="flex flex-col gap-4 glass rounded-2xl p-5">
       {(title || subtitle) && (
         <div>
           {title && <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">{title}</h2>}
@@ -55,7 +55,7 @@ export function StatGrid({ stats }: { stats: { label: string; value: string; hin
     // An odd last card spans the full row instead of leaving a gap.
     <div className="grid grid-cols-2 gap-3 [&>*:last-child:nth-child(odd)]:col-span-2">
       {stats.map((s) => (
-        <div key={s.label} className="flex flex-col gap-1 rounded-2xl bg-white p-4 dark:bg-neutral-900">
+        <div key={s.label} className="flex flex-col gap-1 glass rounded-2xl p-4">
           <span className="text-sm text-neutral-500 dark:text-neutral-400">{s.label}</span>
           <span className="text-xl font-medium tracking-tight tabular-nums text-neutral-900 dark:text-neutral-100">
             {s.value}
@@ -88,18 +88,17 @@ export function ColumnChart({
     label: b.label,
     ...Object.fromEntries(series.map((s) => [s.key, Number.isFinite(s.values[i]) ? s.values[i] : 0])),
   }))
-  // Fewer tick labels when there are lots of columns.
-  const interval = buckets.length > 14 ? Math.ceil(buckets.length / 6) - 1 : 0
+  // Dates tilt 45° so they never collide; with lots of them, show about one in four.
+  const angled = buckets.length > 4
+  const interval = buckets.length > 14 ? Math.ceil(buckets.length / 8) - 1 : 0
 
   return (
     <ChartContainer config={config} className="aspect-auto h-[200px] w-full">
       <BarChart data={data} margin={{ top: 16, left: 0, right: 0 }}>
         <CartesianGrid vertical={false} />
-        {/* Left padding is a strip for the y labels; grid lines still run full width. */}
-        <XAxis dataKey="label" tickLine={false} axisLine={false} interval={interval} tick={<EdgeXTick />} padding={{ left: 32, right: 0 }} />
-        {/* Mirrored: labels sit just above each grid line, inside the chart,
-            so the chart runs edge to edge like the title above it. */}
-        <YAxis mirror tickLine={false} axisLine={false} tick={<InsideYTick format={format} />} />
+        <XAxis dataKey="label" tickLine={false} axisLine={false} interval={interval} height={angled ? 46 : 30} tick={angled ? <AngledXTick /> : <EdgeXTick />} padding={{ left: 8, right: 0 }} />
+        {/* Y labels in their own strip on the left; grid lines start right of them. */}
+        <YAxis width={30} tickLine={false} axisLine={false} tickMargin={6} tick={<LeftYTick format={format} />} />
         {goal !== undefined && goal > 0 && (
           <ReferenceLine
             y={goal}
@@ -133,27 +132,27 @@ export function BreakdownBars({
   color: string
   format?: (v: number) => string
 }) {
-  const config = { value: { label: "Value", color } } satisfies ChartConfig
   if (!rows.length) return null
-  // A row's own color wins (e.g. one color per spending category).
-  const data = rows.map((r) => ({ ...r, fill: r.color ?? "var(--color-value)" }))
+  const max = Math.max(...rows.map((r) => r.value), 0) || 1
+  // Plain rows: the label gets its own column (cut off with … if long), so
+  // it can never run into the bar.
   return (
-    <ChartContainer config={config} className="aspect-auto w-full" style={{ height: rows.length * 40 + 8 }}>
-      <BarChart data={data} layout="vertical" margin={{ left: 0, right: 72 }}>
-        <YAxis dataKey="label" type="category" tickLine={false} axisLine={false} width={100} tick={<StartTick />} />
-        <XAxis type="number" dataKey="value" hide />
-        <Bar dataKey="value" radius={6} isAnimationActive={false}>
-          <LabelList
-            dataKey="value"
-            position="right"
-            offset={8}
-            fontSize={12}
-            className="fill-neutral-900 dark:fill-neutral-100"
-            formatter={(v) => (format ? format(Number(v)) : String(v))}
-          />
-        </Bar>
-      </BarChart>
-    </ChartContainer>
+    <ul className="flex flex-col gap-2">
+      {rows.map((r) => (
+        <li key={r.label} className="flex h-8 items-center gap-3">
+          <span title={r.label} className="w-[38%] shrink-0 truncate text-sm text-neutral-500 dark:text-neutral-400">
+            {r.label}
+          </span>
+          <span className="flex min-w-0 flex-1 items-center gap-2">
+            <span
+              className="h-7 min-w-1.5 rounded-md"
+              style={{ width: `calc((100% - 3.25rem) * ${r.value / max})`, backgroundColor: r.color ?? color }}
+            />
+            <span className="shrink-0 text-xs tabular-nums text-neutral-900 dark:text-neutral-100">{format ? format(r.value) : r.value}</span>
+          </span>
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -186,9 +185,11 @@ export function PointLine({
           dataKey="label"
           tickLine={false}
           axisLine={false}
-          tickMargin={8}
-          padding={{ left: 24, right: 24 }}
-          interval={points.length > 8 ? Math.ceil(points.length / 5) - 1 : 0}
+          height={46}
+          tick={<AngledXTick />}
+          // Room on the left for the first date, which hangs down-left when tilted.
+          padding={{ left: 28, right: 24 }}
+          interval={points.length > 10 ? Math.ceil(points.length / 8) - 1 : 0}
         />
         <YAxis
           hide
@@ -208,7 +209,7 @@ export function PointLine({
         )}
         <Line
           dataKey="value"
-          type="natural"
+          type="monotone"
           stroke="var(--color-value)"
           strokeWidth={2}
           dot={showLabels ? { fill: "var(--color-value)" } : false}
@@ -265,11 +266,12 @@ export function EntryList({
       ) : (
         <div className="-mx-5 -mb-2 flex flex-col">
           {groups.map((g) => (
-            <div key={g.date}>
-              <p className="px-5 pt-2 pb-1 text-xs font-medium tracking-wide text-neutral-500 uppercase dark:text-neutral-400">
+            // A faint inset line between days.
+            <div key={g.date} className="mx-5 border-t border-black/[0.07] first:border-t-0 dark:border-white/[0.08]">
+              <p className="-mx-5 px-5 pt-3 pb-1 text-xs font-medium tracking-wide text-neutral-500 uppercase dark:text-neutral-400">
                 {keyToDate(g.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
               </p>
-              <ul>
+              <ul className="-mx-5">
                 {g.items.map((item) => {
                   const row = (
                     <>
@@ -286,9 +288,10 @@ export function EntryList({
                       )}
                     </>
                   )
-                  const rowClass = "flex min-h-12 w-full items-start gap-3 px-5 py-3 text-left"
+                  const rowClass = "-mx-5 flex min-h-12 w-[calc(100%+2.5rem)] items-start gap-3 px-5 py-3 text-left"
                   return (
-                    <li key={item.key} className="border-t border-neutral-100 first:border-t-0 dark:border-neutral-800">
+                    // No line inside a day; the line between days is on the group.
+                    <li key={item.key} className="mx-5">
                       {item.edit ? (
                         <button
                           type="button"
@@ -337,17 +340,20 @@ export function BucketLine({
     value: Number.isFinite(values[i]) ? Math.round(values[i] * 100) / 100 : null,
   }))
   const points = data.filter((d) => d.value !== null).length
-  const interval = buckets.length > 14 ? Math.ceil(buckets.length / 6) - 1 : 0
+  // Dates tilt 45° so they never collide; with lots of them, show about one in four.
+  const angled = buckets.length > 4
+  const interval = buckets.length > 14 ? Math.ceil(buckets.length / 8) - 1 : 0
   return (
     <ChartContainer config={config} className="aspect-auto h-[200px] w-full">
       <LineChart data={data} margin={{ top: 16, left: 0, right: 0 }}>
         <CartesianGrid vertical={false} />
-        <XAxis dataKey="label" tickLine={false} axisLine={false} interval={interval} padding={{ left: 8, right: 8 }} tick={<EdgeXTick />} />
+        <XAxis dataKey="label" tickLine={false} axisLine={false} interval={interval} height={angled ? 46 : 30} padding={{ left: 8, right: 8 }} tick={angled ? <AngledXTick /> : <EdgeXTick />} />
         <YAxis
-          mirror
+          width={30}
           tickLine={false}
           axisLine={false}
-          tick={<InsideYTick format={format} />}
+          tickMargin={6}
+          tick={<LeftYTick format={format} />}
           domain={["dataMin - 1", "dataMax + 1"]}
           allowDecimals={false}
         />
@@ -390,8 +396,8 @@ export function IncomeRadial({
 }) {
   const left = income - spent
   const config = {
-    spent: { label: "Spent", color: "#C8735F" },
-    left: { label: "Left", color: "#4E8A6B" },
+    spent: { label: "Spent", color: "#EE6C4D" },
+    left: { label: "Left", color: "#2FA36B" },
   } satisfies ChartConfig
   // Over budget: the whole arc is spending.
   const data = [{ spent: Math.max(spent, 0.0001), left: Math.max(left, 0) }]
@@ -429,8 +435,8 @@ export function IncomeRadial({
         </RadialBarChart>
       </ChartContainer>
       <div className="mt-3 flex gap-5 text-sm text-neutral-500 dark:text-neutral-400">
-        <span className="flex items-center gap-1.5"><i className="size-2.5 rounded-full bg-[#4E8A6B]" />Made {format(income)}</span>
-        <span className="flex items-center gap-1.5"><i className="size-2.5 rounded-full bg-[#C8735F]" />Spent {format(spent)}</span>
+        <span className="flex items-center gap-1.5"><i className="size-2.5 rounded-full bg-[#2FA36B]" />Made {format(income)}</span>
+        <span className="flex items-center gap-1.5"><i className="size-2.5 rounded-full bg-[#EE6C4D]" />Spent {format(spent)}</span>
       </div>
     </div>
   )
@@ -496,7 +502,7 @@ export function DayGrid({
                       // Thin gray outline on every square, filled or not.
                       "aspect-square ring-1 ring-black/15 ring-inset dark:ring-white/15",
                       compact ? "rounded-[2px]" : "rounded-[4px]",
-                      !on && "bg-neutral-100 dark:bg-neutral-800",
+                      !on && "bg-black/[0.04] dark:bg-white/[0.05]",
                       !inside && "opacity-35"
                     )}
                     style={on ? { backgroundColor: color } : undefined}
@@ -514,40 +520,32 @@ export function DayGrid({
 /* ------------------------------------------- Concentric rings (macros) */
 
 /**
- * One ring per nutrient, filled to its share of the daily goal (capped at
- * the full circle). Legend on the right with the actual numbers.
+ * One slim bar per nutrient, filled to its share of the daily goal, with
+ * the actual number over the goal above it.
  */
 export function GoalRings({
   rows,
 }: {
   rows: { key: string; label: string; color: string; value: number; goal: number; unit: string }[]
 }) {
-  const config = Object.fromEntries(rows.map((r) => [r.key, { label: r.label, color: r.color }])) satisfies ChartConfig
-  // Recharts draws the first row innermost; list order is outermost first.
-  const data = [...rows].reverse().map((r) => ({
-    key: r.key,
-    pct: r.goal > 0 && Number.isFinite(r.value) ? Math.min((r.value / r.goal) * 100, 100) : 0,
-    fill: `var(--color-${r.key})`,
-  }))
+  if (!rows.length) return null
+  const share = (r: (typeof rows)[number]) => (r.goal > 0 && Number.isFinite(r.value) ? Math.min(r.value / r.goal, 1) : 0)
+  const num = (v: number) => (Number.isFinite(v) ? Math.round(v).toLocaleString() : "—")
+
   return (
-    <div className="flex items-center gap-4">
-      <ChartContainer config={config} className="aspect-square w-[46%] max-w-[190px] shrink-0">
-        <RadialBarChart data={data} startAngle={90} endAngle={-270} innerRadius="28%" outerRadius="100%" barSize={9}>
-          <PolarAngleAxis type="number" domain={[0, 100]} tick={false} axisLine={false} />
-          <RadialBar dataKey="pct" background cornerRadius={6} isAnimationActive={false} />
-        </RadialBarChart>
-      </ChartContainer>
-      <ul className="flex min-w-0 flex-1 flex-col gap-2.5">
+    <div>
+      <ul className="flex flex-col gap-3">
         {rows.map((r) => (
-          <li key={r.key} className="flex items-center gap-2 text-sm">
-            <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: r.color }} />
-            <span className="flex-1 text-neutral-900 dark:text-neutral-100">{r.label}</span>
-            <span className="tabular-nums text-neutral-500 dark:text-neutral-400">
-              <span className="font-medium text-neutral-900 dark:text-neutral-100">
-                {Number.isFinite(r.value) ? Math.round(r.value).toLocaleString() : "—"}
+          <li key={r.key} className="flex flex-col gap-1">
+            <div className="flex items-baseline justify-between gap-2 text-sm">
+              <span className="text-neutral-700 dark:text-neutral-300">{r.label}</span>
+              <span className="tabular-nums text-neutral-500 dark:text-neutral-400">
+                <span className="font-medium text-neutral-900 dark:text-neutral-100">{num(r.value)}</span>/{num(r.goal)}
+                {r.unit}
               </span>
-              /{Math.round(r.goal).toLocaleString()}
-              {r.unit}
+            </div>
+            <span className="h-1.5 overflow-hidden rounded-full bg-black/[0.07] dark:bg-white/10">
+              <span className="block h-full rounded-full" style={{ width: `${share(r) * 100}%`, backgroundColor: r.color }} />
             </span>
           </li>
         ))}

@@ -73,19 +73,8 @@ export function WorkoutStrip({ data, today, color }: { data: TrendData; today: s
 
 /* --------------------------------------------------------------- Journal */
 
-const MOOD_COLOR: Record<string, string> = {
-  happy: "#4E8A6B",
-  motivated: "#4E8A6B",
-  neutral: "#9A938B",
-  tired: "#C9A24A",
-  anxious: "#C9A24A",
-  stressed: "#C8735F",
-  sad: "#C8735F",
-  angry: "#C8735F",
-}
-
-/** One dot per day, colored by that day's mood. Empty = no entry. */
-export function MoodDots({ data, today }: { data: TrendData; today: string }) {
+/** One dot per day with an entry, in the journal color. Empty = no entry. */
+export function MoodDots({ data, today, color }: { data: TrendData; today: string; color: string }) {
   const days = lastDays(today)
   const moodOn = (d: string) => {
     const entries = data.journal.filter((j) => j.date === d)
@@ -104,7 +93,7 @@ export function MoodDots({ data, today }: { data: TrendData; today: string }) {
             <div key={d} className="flex flex-1 justify-center" title={mood ?? "No entry"}>
               <span
                 className={cn("size-5 rounded-full", !mood && emptyCell)}
-                style={mood ? { backgroundColor: MOOD_COLOR[mood] ?? "#9A938B" } : undefined}
+                style={mood ? { backgroundColor: color } : undefined}
               />
             </div>
           )
@@ -239,8 +228,8 @@ export function MoneyPace({ data, today, prefs }: { data: TrendData; today: stri
       <Frame label="Made vs spent this month">
         <div className="flex h-full flex-col justify-center gap-2">
           {[
-            { label: "in", value: made, color: "#4E8A6B" },
-            { label: "out", value: spent, color: "#C8735F" },
+            { label: "in", value: made, color: "#2FA36B" },
+            { label: "out", value: spent, color: "#EE6C4D" },
           ].map((r) => (
             <div key={r.label} className="flex items-center gap-1.5">
               <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-neutral-200/70 dark:bg-neutral-800">
@@ -253,21 +242,15 @@ export function MoneyPace({ data, today, prefs }: { data: TrendData; today: stri
     )
   }
 
-  const [y, m, d] = today.split("-").map(Number)
-  const daysInMonth = new Date(y, m, 0).getDate()
-  const pace = d / daysInMonth // where you'd be spending evenly
   const used = spent / budget
-  const over = used > pace
   return (
     <Frame label={`${usd(spent)} of ${usd(budget)} budget`}>
       <div className="flex h-full flex-col justify-center gap-1.5">
         <div className="relative h-3 rounded-full bg-neutral-200/70 dark:bg-neutral-800">
           <div
-            className="h-full rounded-full"
-            style={{ width: `${Math.min(1, used) * 100}%`, backgroundColor: used > 1 ? "#C8735F" : over ? "#C9A24A" : "#4E8A6B" }}
+            className="bar-fill h-full rounded-full"
+            style={{ width: `${Math.min(1, used) * 100}%`, background: used > 1 ? "#E5534B" : undefined }}
           />
-          {/* Pace tick: spending evenly, you'd be here today. */}
-          <span className="absolute -top-1 -bottom-1 w-0.5 rounded-full bg-neutral-900 dark:bg-neutral-100" style={{ left: `${pace * 100}%` }} />
         </div>
         <span className={cn(legendText, "text-right")}>{Math.round(used * 100)}% used</span>
       </div>

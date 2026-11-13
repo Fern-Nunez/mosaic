@@ -39,7 +39,7 @@ export default async function CategoryPage({
   const meta = CATEGORY_META[category]
 
   return (
-    <div className="flex flex-col gap-12">
+    <div className="flex flex-col gap-7">
       <header className="flex flex-col gap-2">
         {/* Same spot, size and color as the date on Today. */}
         <Link

@@ -139,16 +139,16 @@ export function NotificationSetting({ rowClassName }: { rowClassName: string }) 
   }
 
   const base = "h-9 cursor-pointer rounded-full px-4 text-sm disabled:opacity-50"
-  const button = `${base} bg-neutral-100 text-neutral-800 active:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:active:bg-neutral-700`
-  const primary = `${base} bg-[#318E63] text-white active:bg-[#2A7A55]`
+  const button = `${base} chip text-neutral-800 dark:text-neutral-200`
+  const primary = `${base} chip border-black/15! font-medium text-neutral-900 dark:border-white/25! dark:text-neutral-100`
 
   return (
     <div>
       <label className={`${rowClassName} py-2.5 ${status === "on" || status === "off" ? "cursor-pointer" : ""}`}>
         <Bell className="size-5 text-neutral-500 dark:text-neutral-400" />
         <span className="flex-1">
-          Workout reminders
-          <span className="block text-xs text-neutral-500 dark:text-neutral-400">Evening nudge if your workout isn&apos;t logged</span>
+          On this phone
+          <span className="block text-xs text-neutral-500 dark:text-neutral-400">Needed for the reminders below</span>
         </span>
         <Switch
           checked={status === "on"}
@@ -163,7 +163,7 @@ export function NotificationSetting({ rowClassName }: { rowClassName: string }) 
           {status === "on" && (
             <div className="flex flex-wrap gap-2">
               <button type="button" disabled={busy} onClick={sendTest} className={button}>Send test</button>
-              <button type="button" disabled={busy} onClick={check} className={button}>Check today</button>
+              <button type="button" disabled={busy} onClick={check} className={button}>Check workout</button>
               {canSendNow && (
                 <button type="button" disabled={busy} onClick={sendNow} className={primary}>
                   Send it now
